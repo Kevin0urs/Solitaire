@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spider Solitaire 2 Couleurs - Microsoft Solitaire Collection Style</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="theme-blue">
+    <div id="app-container">
+        <!-- HEADER BAR -->
+        <header id="header-bar">
+            <div class="brand-title">
+                <span>Spider Solitaire</span>
+                <span class="badge">2 Couleurs</span>
+            </div>
+
+            <div class="stats-display">
+                <div class="stat-item" title="Temps écoulé">
+                    <span>⏱️</span>
+                    <span id="timer-count">00:00</span>
+                </div>
+                <div class="stat-item" title="Nombre de coups joués">
+                    <span class="stat-label">Coups:</span>
+                    <span id="move-count">0</span>
+                </div>
+                <div class="stat-item" title="Suites complétées">
+                    <span class="stat-label">Suites:</span>
+                    <span id="completed-count">0 / 8</span>
+                </div>
+            </div>
+
+            <div class="header-actions">
+                <select id="theme-select" class="theme-select" aria-label="Choisir le thème de couleur">
+                    <option value="blue">Bleu Nuit</option>
+                    <option value="dark">Gris Anthracite</option>
+                    <option value="green">Vert Tapis</option>
+                </select>
+            </div>
+        </header>
+
+        <!-- MAIN PLAYFIELD -->
+        <main id="playfield">
+            <!-- 10 Tableau Columns -->
+            <div id="tableau-container"></div>
+
+            <!-- Bottom Deck & Foundation Area -->
+            <div id="bottom-bar">
+                <!-- Stock Pile -->
+                <div class="stock-area" title="Cliquer pour distribuer 10 cartes (1 par colonne)">
+                    <div class="stock-title">Pioche (<span id="stock-count">50</span>)</div>
+                    <div id="stock-pile"></div>
+                </div>
+
+                <!-- Foundation Piles (8 Completed Runs) -->
+                <div class="foundation-area">
+                    <div class="foundation-title">Suites Complétées (8 Max)</div>
+                    <div id="foundation-container"></div>
+                </div>
+            </div>
+        </main>
+
+        <!-- ACTION TOOLBAR -->
+        <footer id="action-bar">
+            <button id="btn-undo" class="btn" title="Annuler le dernier coup">
+                <span>↩️</span> Annuler
+            </button>
+            <button id="btn-redo" class="btn" title="Rétablir le coup annulé">
+                <span>↪️</span> Rétablir
+            </button>
+            <button id="btn-hint" class="btn btn-accent" title="Proposer un coup possible">
+                <span>💡</span> Indice
+            </button>
+            <button id="btn-new-game" class="btn btn-primary" title="Démarrer une nouvelle partie">
+                <span>🔄</span> Nouvelle Partie
+            </button>
+            <button id="btn-rules" class="btn" title="Afficher les règles du jeu">
+                <span>📖</span> Règles
+            </button>
+            <button id="btn-stats" class="btn" title="Voir vos statistiques">
+                <span>📊</span> Stats
+            </button>
+            <button id="btn-sound" class="btn" title="Activer / Désactiver le son">
+                🔊 Son On
+            </button>
+        </footer>
+    </div>
+
+    <!-- TOAST NOTIFICATION -->
+    <div id="toast-message"></div>
+
+    <!-- MODAL: VICTOIRE -->
+    <div id="modal-win" class="modal">
+        <div class="modal-content" style="text-align: center;">
+            <div class="modal-header">
+                <h2 class="modal-title">🎉 Félicitations ! Victoire !</h2>
+                <button class="modal-close">&times;</button>
+            </div>
+            <p style="font-size: 1.2rem; margin: 15px 0;">Vous avez réussi à assembler les 8 suites complètes !</p>
+            <div class="stats-grid">
+                <div class="stat-box">
+                    <div id="win-time" class="stat-box-num">00:00</div>
+                    <div class="stat-box-desc">Temps total</div>
+                </div>
+                <div class="stat-box">
+                    <div id="win-moves" class="stat-box-num">0</div>
+                    <div class="stat-box-desc">Coups joués</div>
+                </div>
+            </div>
+            <button id="btn-win-restart" class="btn btn-primary" style="margin-top: 20px; width: 100%; justify-content: center;" onclick="location.reload()">
+                Rejouer une partie
+            </button>
+        </div>
+    </div>
+
+    <!-- MODAL: RÈGLES -->
+    <div id="modal-rules" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">📖 Règles du Spider 2 Couleurs</h2>
+                <button class="modal-close">&times;</button>
+            </div>
+            <ul class="rules-list">
+                <li><strong>Cartes :</strong> 104 cartes au total (Piques ♠ et Cœurs ♥).</li>
+                <li><strong>Empilement :</strong> Vous pouvez poser n'importe quelle carte sur une carte de rang immédiatement supérieur (ex: un 8 sur un 9), quelle que soit sa couleur.</li>
+                <li><strong>Séquences :</strong> Vous ne pouvez déplacer en bloc qu'une séquence de cartes strictement descendante et de la <em>même couleur</em> (ex: R♠–D♠–V♠–10♠).</li>
+                <li><strong>Colonnes vides :</strong> Une colonne vide peut recevoir n'importe quelle carte ou séquence valide.</li>
+                <li><strong>Pioche :</strong> Cliquez sur la pioche pour distribuer 1 carte sur chaque colonne (10 cartes). <em>Important :</em> Toutes les colonnes doivent contenir au moins 1 carte pour pouvoir piocher !</li>
+                <li><strong>Objectif :</strong> Former 8 suites complètes de la même couleur (du Roi à l'As). Lorsqu'une suite est formée, elle est retirée du plateau.</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- MODAL: STATISTIQUES -->
+    <div id="modal-stats" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">📊 Vos Statistiques</h2>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="stats-grid">
+                <div class="stat-box">
+                    <div id="stat-played" class="stat-box-num">0</div>
+                    <div class="stat-box-desc">Parties jouées</div>
+                </div>
+                <div class="stat-box">
+                    <div id="stat-won" class="stat-box-num">0</div>
+                    <div class="stat-box-desc">Parties gagnées</div>
+                </div>
+                <div class="stat-box">
+                    <div id="stat-rate" class="stat-box-num">0%</div>
+                    <div class="stat-box-desc">Taux de victoire</div>
+                </div>
+                <div class="stat-box">
+                    <div id="stat-best-time" class="stat-box-num">-</div>
+                    <div class="stat-box-desc">Meilleur temps</div>
+                </div>
+                <div class="stat-box" style="grid-column: span 2;">
+                    <div id="stat-min-moves" class="stat-box-num">-</div>
+                    <div class="stat-box-desc">Record de coups minimum</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN APP SCRIPT -->
+    <script type="module">
+        import { UIController } from './js/uiController.js';
+        window.addEventListener('DOMContentLoaded', () => {
+            const app = new UIController();
+            app.init();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,617 @@
+import { GameEngine } from './gameEngine.js';
+import { CardRenderer } from './cardRender.js';
+import { sound } from './sound.js';
+import { StorageManager } from './storage.js';
+
+export class UIController {
+    constructor() {
+        this.engine = new GameEngine();
+        
+        // DOM Elements
+        this.tableauContainer = document.getElementById('tableau-container');
+        this.stockPileEl = document.getElementById('stock-pile');
+        this.stockCountEl = document.getElementById('stock-count');
+        this.foundationContainer = document.getElementById('foundation-container');
+        
+        this.moveCountEl = document.getElementById('move-count');
+        this.timerEl = document.getElementById('timer-count');
+        this.completedCountEl = document.getElementById('completed-count');
+        
+        this.btnUndo = document.getElementById('btn-undo');
+        this.btnRedo = document.getElementById('btn-redo');
+        this.btnHint = document.getElementById('btn-hint');
+        this.btnNewGame = document.getElementById('btn-new-game');
+        this.btnRules = document.getElementById('btn-rules');
+        this.btnStats = document.getElementById('btn-stats');
+        this.btnSound = document.getElementById('btn-sound');
+        this.themeSelect = document.getElementById('theme-select');
+
+        this.toastEl = document.getElementById('toast-message');
+        this.modalWin = document.getElementById('modal-win');
+        this.modalRules = document.getElementById('modal-rules');
+        this.modalStats = document.getElementById('modal-stats');
+
+        // Selection & Drag State
+        this.selectedSequenceInfo = null; // { colIndex, cardIndex, element }
+        this.dragState = null; // { colIndex, cardIndex, ghostEl, startX, startY, offsetX, offsetY }
+        this.activeHint = null;
+
+        // Timer
+        this.timerInterval = null;
+        this.secondsElapsed = 0;
+        this.timerStarted = false;
+
+        this.initEvents();
+    }
+
+    init() {
+        // Load saved theme
+        const settings = StorageManager.getSettings();
+        if (settings.theme) {
+            this.themeSelect.value = settings.theme;
+            this.setTheme(settings.theme);
+        }
+        if (settings.soundMuted) {
+            sound.muted = true;
+            this.updateSoundButtonUI();
+        }
+
+        this.startNewGame();
+    }
+
+    startNewGame() {
+        this.stopTimer();
+        this.secondsElapsed = 0;
+        this.timerStarted = false;
+        this.updateTimerUI();
+
+        this.engine.initGame();
+        StorageManager.recordGameStart();
+
+        this.clearSelection();
+        this.clearHint();
+        this.renderBoard();
+        this.showToast('Nouvelle partie démarrée. Bonne chance !');
+    }
+
+    startTimer() {
+        if (this.timerStarted) return;
+        this.timerStarted = true;
+        this.timerInterval = setInterval(() => {
+            this.secondsElapsed++;
+            this.updateTimerUI();
+        }, 1000);
+    }
+
+    stopTimer() {
+        if (this.timerInterval) {
+            clearInterval(this.timerInterval);
+            this.timerInterval = null;
+        }
+        this.timerStarted = false;
+    }
+
+    updateTimerUI() {
+        const mins = Math.floor(this.secondsElapsed / 60);
+        const secs = this.secondsElapsed % 60;
+        const formatted = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        this.timerEl.textContent = formatted;
+    }
+
+    setTheme(themeName) {
+        document.body.className = `theme-${themeName}`;
+        const settings = StorageManager.getSettings();
+        settings.theme = themeName;
+        StorageManager.saveSettings(settings);
+    }
+
+    updateSoundButtonUI() {
+        this.btnSound.textContent = sound.muted ? '🔇 Son Off' : '🔊 Son On';
+        const settings = StorageManager.getSettings();
+        settings.soundMuted = sound.muted;
+        StorageManager.saveSettings(settings);
+    }
+
+    showToast(message, duration = 3000) {
+        if (!this.toastEl) return;
+        this.toastEl.textContent = message;
+        this.toastEl.classList.add('visible');
+        setTimeout(() => {
+            this.toastEl.classList.remove('visible');
+        }, duration);
+    }
+
+    // --- RENDER ENGINE ---
+
+    renderBoard() {
+        this.renderTableau();
+        this.renderStock();
+        this.renderFoundation();
+        this.updateHeaderStats();
+        this.updateControlsUI();
+    }
+
+    renderTableau() {
+        this.tableauContainer.innerHTML = '';
+
+        for (let colIdx = 0; colIdx < 10; colIdx++) {
+            const colEl = document.createElement('div');
+            colEl.className = 'column';
+            colEl.dataset.colIndex = colIdx;
+
+            const cards = this.engine.tableau[colIdx];
+
+            if (cards.length === 0) {
+                const emptySlot = document.createElement('div');
+                emptySlot.className = 'empty-column-slot';
+                emptySlot.textContent = 'Vide';
+                colEl.appendChild(emptySlot);
+            } else {
+                cards.forEach((card, cardIdx) => {
+                    const isSelected = this.selectedSequenceInfo &&
+                        this.selectedSequenceInfo.colIndex === colIdx &&
+                        cardIdx >= this.selectedSequenceInfo.cardIndex;
+
+                    const isHintSource = this.activeHint &&
+                        this.activeHint.fromCol === colIdx &&
+                        cardIdx >= this.activeHint.cardIndex;
+
+                    const cardDOM = CardRenderer.createCardDOM(card, {
+                        isSelected,
+                        isHintSource
+                    });
+
+                    cardDOM.dataset.colIndex = colIdx;
+                    cardDOM.dataset.cardIndex = cardIdx;
+
+                    // Vertical offset for stacking
+                    // Face-down cards offset less than face-up cards for compact vertical layout
+                    let topOffset = 0;
+                    for (let k = 0; k < cardIdx; k++) {
+                        topOffset += cards[k].faceUp ? 28 : 12;
+                    }
+                    cardDOM.style.top = `${topOffset}px`;
+
+                    colEl.appendChild(cardDOM);
+                });
+            }
+
+            if (this.activeHint && this.activeHint.toCol === colIdx) {
+                colEl.classList.add('hint-target-column');
+            }
+
+            this.tableauContainer.appendChild(colEl);
+        }
+    }
+
+    renderStock() {
+        const remaining = this.engine.stock.length;
+        this.stockCountEl.textContent = `${remaining} (${remaining / 10} pioches)`;
+        this.stockPileEl.innerHTML = '';
+
+        if (remaining > 0) {
+            // Render layered stock deck
+            const layers = Math.min(5, Math.ceil(remaining / 10));
+            for (let i = 0; i < layers; i++) {
+                const stockCard = document.createElement('div');
+                stockCard.className = 'stock-card-back';
+                stockCard.style.right = `${i * 3}px`;
+                stockCard.style.bottom = `${i * 2}px`;
+                this.stockPileEl.appendChild(stockCard);
+            }
+        } else {
+            const emptyStock = document.createElement('div');
+            emptyStock.className = 'empty-stock-slot';
+            emptyStock.textContent = 'Vide';
+            this.stockPileEl.appendChild(emptyStock);
+        }
+    }
+
+    renderFoundation() {
+        this.foundationContainer.innerHTML = '';
+        const completed = this.engine.completedRuns;
+        this.completedCountEl.textContent = `${completed.length} / 8`;
+
+        for (let i = 0; i < 8; i++) {
+            const slot = document.createElement('div');
+            slot.className = 'foundation-slot';
+
+            if (i < completed.length) {
+                const run = completed[i];
+                slot.classList.add('completed');
+                const symbol = run.suit === 'spades' ? '♠' : '♥';
+                const color = run.suit === 'spades' ? '#000000' : '#C0392B';
+                slot.innerHTML = `<span style="color: ${color}">K${symbol}</span>`;
+            } else {
+                slot.innerHTML = `<span class="slot-placeholder">K-A</span>`;
+            }
+
+            this.foundationContainer.appendChild(slot);
+        }
+    }
+
+    updateHeaderStats() {
+        this.moveCountEl.textContent = this.engine.moveCount;
+    }
+
+    updateControlsUI() {
+        this.btnUndo.disabled = this.engine.history.length === 0;
+        this.btnRedo.disabled = this.engine.redoStack.length === 0;
+    }
+
+    // --- INTERACTION & EVENTS ---
+
+    initEvents() {
+        // Stock click
+        this.stockPileEl.addEventListener('click', () => this.handleStockClick());
+
+        // Event delegation for Tableau columns
+        this.tableauContainer.addEventListener('pointerdown', (e) => this.handlePointerDown(e));
+        document.addEventListener('pointermove', (e) => this.handlePointerMove(e));
+        document.addEventListener('pointerup', (e) => this.handlePointerUp(e));
+
+        // Control buttons
+        this.btnUndo.addEventListener('click', () => this.handleUndo());
+        this.btnRedo.addEventListener('click', () => this.handleRedo());
+        this.btnHint.addEventListener('click', () => this.handleHint());
+        this.btnNewGame.addEventListener('click', () => {
+            if (confirm('Voulez-vous vraiment démarrer une nouvelle partie ?')) {
+                this.startNewGame();
+            }
+        });
+
+        this.btnRules.addEventListener('click', () => this.modalRules.classList.add('open'));
+        this.btnStats.addEventListener('click', () => this.showStatsModal());
+        this.btnSound.addEventListener('click', () => {
+            const isMuted = sound.toggleMute();
+            this.updateSoundButtonUI();
+        });
+
+        this.themeSelect.addEventListener('change', (e) => this.setTheme(e.target.value));
+
+        // Close modals
+        document.querySelectorAll('.modal-close').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const modal = e.target.closest('.modal');
+                if (modal) modal.classList.remove('open');
+            });
+        });
+    }
+
+    handleStockClick() {
+        this.clearSelection();
+        this.clearHint();
+
+        const result = this.engine.dealStock();
+        if (!result.success) {
+            sound.playError();
+            if (result.reason === 'EMPTY_COLUMN') {
+                this.showToast('⚠️ Impossible de distribuer : toutes les colonnes doivent contenir au moins une carte !');
+                this.highlightEmptyColumns();
+            } else if (result.reason === 'NO_STOCK') {
+                this.showToast('La pioche est vide !');
+            }
+            return;
+        }
+
+        this.startTimer();
+        sound.playDeal();
+
+        if (result.completedInfoList && result.completedInfoList.length > 0) {
+            sound.playSequenceComplete();
+            this.showToast('🎉 Suite complète (K à A) formée !');
+        }
+
+        this.renderBoard();
+
+        if (result.isWin) {
+            this.handleWin();
+        }
+    }
+
+    highlightEmptyColumns() {
+        document.querySelectorAll('.column').forEach(col => {
+            const colIdx = parseInt(col.dataset.colIndex, 10);
+            if (this.engine.tableau[colIdx].length === 0) {
+                col.classList.add('shake-empty');
+                setTimeout(() => col.classList.remove('shake-empty'), 800);
+            }
+        });
+    }
+
+    handlePointerDown(e) {
+        const cardEl = e.target.closest('.card');
+        const columnEl = e.target.closest('.column');
+
+        // Handle tap on empty column when a sequence is selected
+        if (!cardEl && columnEl && this.selectedSequenceInfo) {
+            const targetCol = parseInt(columnEl.dataset.colIndex, 10);
+            this.attemptMove(this.selectedSequenceInfo.colIndex, this.selectedSequenceInfo.cardIndex, targetCol);
+            return;
+        }
+
+        if (!cardEl) return;
+
+        const colIndex = parseInt(cardEl.dataset.colIndex, 10);
+        const cardIndex = parseInt(cardEl.dataset.cardIndex, 10);
+
+        if (!this.engine.canMoveSequence(colIndex, cardIndex)) {
+            // Cannot move sequence, if tapping an unmovable card while having selection, try move or clear
+            if (this.selectedSequenceInfo) {
+                this.attemptMove(this.selectedSequenceInfo.colIndex, this.selectedSequenceInfo.cardIndex, colIndex);
+            } else {
+                sound.playError();
+            }
+            return;
+        }
+
+        // Tap-to-move / Drag setup
+        if (this.selectedSequenceInfo &&
+            this.selectedSequenceInfo.colIndex === colIndex &&
+            this.selectedSequenceInfo.cardIndex === cardIndex) {
+            // Tapped already selected card -> try auto-move to best target
+            this.autoMove(colIndex, cardIndex);
+            return;
+        }
+
+        if (this.selectedSequenceInfo) {
+            // A different sequence was already selected, try moving it onto this column!
+            const moved = this.attemptMove(this.selectedSequenceInfo.colIndex, this.selectedSequenceInfo.cardIndex, colIndex);
+            if (moved) return;
+        }
+
+        // Prepare Drag & Selection state
+        this.clearHint();
+        this.dragState = {
+            colIndex,
+            cardIndex,
+            startX: e.clientX,
+            startY: e.clientY,
+            isDragging: false,
+            cardEl
+        };
+    }
+
+    handlePointerMove(e) {
+        if (!this.dragState) return;
+
+        const dist = Math.hypot(e.clientX - this.dragState.startX, e.clientY - this.dragState.startY);
+
+        if (!this.dragState.isDragging && dist > 6) {
+            // Initiate Dragging Ghost
+            this.dragState.isDragging = true;
+            this.createDragGhost(e.clientX, e.clientY);
+        }
+
+        if (this.dragState.isDragging && this.dragState.ghostEl) {
+            this.dragState.ghostEl.style.left = `${e.clientX - this.dragState.offsetX}px`;
+            this.dragState.ghostEl.style.top = `${e.clientY - this.dragState.offsetY}px`;
+            this.highlightDropTargetsUnderPointer(e.clientX, e.clientY);
+        }
+    }
+
+    handlePointerUp(e) {
+        if (!this.dragState) return;
+
+        if (this.dragState.isDragging) {
+            // Drag dropped
+            const dropTargetCol = this.findDropTargetColumn(e.clientX, e.clientY);
+            if (dropTargetCol !== null) {
+                this.attemptMove(this.dragState.colIndex, this.dragState.cardIndex, dropTargetCol);
+            } else {
+                sound.playError();
+            }
+            this.cleanupDragGhost();
+        } else {
+            // It was a tap/click!
+            this.handleCardClick(this.dragState.colIndex, this.dragState.cardIndex);
+        }
+
+        this.dragState = null;
+    }
+
+    handleCardClick(colIndex, cardIndex) {
+        // Selection toggle
+        this.selectedSequenceInfo = { colIndex, cardIndex };
+        sound.playCardFlip();
+
+        // Check if there is only 1 unambiguous best move, auto-move!
+        const validMoves = this.engine.getValidMoves().filter(m => m.fromCol === colIndex && m.cardIndex === cardIndex);
+
+        if (validMoves.length === 1) {
+            // Auto move to single valid target
+            this.attemptMove(colIndex, cardIndex, validMoves[0].toCol);
+        } else {
+            // Re-render to show selection and target highlights
+            this.renderBoard();
+        }
+    }
+
+    autoMove(colIndex, cardIndex) {
+        const validMoves = this.engine.getValidMoves().filter(m => m.fromCol === colIndex && m.cardIndex === cardIndex);
+        if (validMoves.length > 0) {
+            // Move to highest score target
+            this.attemptMove(colIndex, cardIndex, validMoves[0].toCol);
+        } else {
+            sound.playError();
+            this.clearSelection();
+            this.renderBoard();
+        }
+    }
+
+    attemptMove(fromCol, cardIndex, targetCol) {
+        const res = this.engine.moveSequence(fromCol, cardIndex, targetCol);
+
+        if (!res.success) {
+            sound.playError();
+            this.clearSelection();
+            this.renderBoard();
+            return false;
+        }
+
+        this.startTimer();
+        sound.playCardDrop();
+        this.clearSelection();
+        this.clearHint();
+
+        if (res.completedInfo) {
+            sound.playSequenceComplete();
+            this.showToast('🎉 Suite complète retirée ! (K à A)');
+        }
+
+        this.renderBoard();
+
+        if (res.isWin) {
+            this.handleWin();
+        }
+
+        return true;
+    }
+
+    createDragGhost(clientX, clientY) {
+        const { colIndex, cardIndex, cardEl } = this.dragState;
+        const sequence = this.engine.tableau[colIndex].slice(cardIndex);
+
+        const rect = cardEl.getBoundingClientRect();
+        this.dragState.offsetX = clientX - rect.left;
+        this.dragState.offsetY = clientY - rect.top;
+
+        const ghost = document.createElement('div');
+        ghost.className = 'drag-ghost';
+        ghost.style.width = `${rect.width}px`;
+        ghost.style.left = `${clientX - this.dragState.offsetX}px`;
+        ghost.style.top = `${clientY - this.dragState.offsetY}px`;
+
+        sequence.forEach((card, idx) => {
+            const cardDOM = CardRenderer.createCardDOM(card, { isDragging: true });
+            cardDOM.style.top = `${idx * 28}px`;
+            ghost.appendChild(cardDOM);
+        });
+
+        document.body.appendChild(ghost);
+        this.dragState.ghostEl = ghost;
+    }
+
+    highlightDropTargetsUnderPointer(clientX, clientY) {
+        document.querySelectorAll('.column').forEach(col => {
+            col.classList.remove('drop-target-hover');
+        });
+
+        const targetCol = this.findDropTargetColumn(clientX, clientY);
+        if (targetCol !== null) {
+            const colEl = document.querySelector(`.column[data-col-index="${targetCol}"]`);
+            if (colEl) colEl.classList.add('drop-target-hover');
+        }
+    }
+
+    findDropTargetColumn(clientX, clientY) {
+        if (!this.dragState) return null;
+        const sequence = this.engine.tableau[this.dragState.colIndex].slice(this.dragState.cardIndex);
+
+        const columns = document.querySelectorAll('.column');
+        for (const col of columns) {
+            const rect = col.getBoundingClientRect();
+            if (clientX >= rect.left && clientX <= rect.right && clientY >= rect.top && clientY <= rect.bottom + 100) {
+                const targetColIdx = parseInt(col.dataset.colIndex, 10);
+                if (targetColIdx !== this.dragState.colIndex && this.engine.canDropSequence(sequence, targetColIdx)) {
+                    return targetColIdx;
+                }
+            }
+        }
+        return null;
+    }
+
+    cleanupDragGhost() {
+        if (this.dragState && this.dragState.ghostEl) {
+            this.dragState.ghostEl.remove();
+        }
+        document.querySelectorAll('.column').forEach(col => col.classList.remove('drop-target-hover'));
+    }
+
+    clearSelection() {
+        this.selectedSequenceInfo = null;
+    }
+
+    clearHint() {
+        this.activeHint = null;
+    }
+
+    handleUndo() {
+        this.clearSelection();
+        this.clearHint();
+
+        if (this.engine.undo()) {
+            sound.playCardFlip();
+            this.renderBoard();
+            this.showToast('Coup annulé');
+        }
+    }
+
+    handleRedo() {
+        this.clearSelection();
+        this.clearHint();
+
+        if (this.engine.redo()) {
+            sound.playCardFlip();
+            this.renderBoard();
+            this.showToast('Coup rétabli');
+        }
+    }
+
+    handleHint() {
+        this.clearSelection();
+        const validMoves = this.engine.getValidMoves();
+
+        if (validMoves.length === 0) {
+            sound.playError();
+            if (this.engine.stock.length > 0) {
+                this.showToast('💡 Aucun coup sur le plateau. Distribuez la pioche !');
+            } else {
+                this.showToast('💡 Aucun coup possible. Essayez d\'annuler un coup !');
+            }
+            return;
+        }
+
+        const bestMove = validMoves[0];
+        this.activeHint = bestMove;
+        sound.playCardFlip();
+        this.renderBoard();
+
+        const fromCard = this.engine.tableau[bestMove.fromCol][bestMove.cardIndex];
+        this.showToast(`💡 Astuce : Déplacez le ${fromCard.getRankLabel()}${fromCard.getSuitSymbol()} vers la colonne ${bestMove.toCol + 1}`);
+    }
+
+    handleWin() {
+        this.stopTimer();
+        sound.playSequenceComplete();
+
+        StorageManager.recordWin(this.secondsElapsed, this.engine.moveCount);
+
+        const timeStr = this.timerEl.textContent;
+        document.getElementById('win-time').textContent = timeStr;
+        document.getElementById('win-moves').textContent = this.engine.moveCount;
+
+        this.modalWin.classList.add('open');
+    }
+
+    showStatsModal() {
+        const stats = StorageManager.getStats();
+        document.getElementById('stat-played').textContent = stats.gamesPlayed;
+        document.getElementById('stat-won').textContent = stats.gamesWon;
+
+        const winRate = stats.gamesPlayed > 0 ? Math.round((stats.gamesWon / stats.gamesPlayed) * 100) : 0;
+        document.getElementById('stat-rate').textContent = `${winRate}%`;
+
+        if (stats.bestTime !== null) {
+            const mins = Math.floor(stats.bestTime / 60);
+            const secs = stats.bestTime % 60;
+            document.getElementById('stat-best-time').textContent = `${mins}m ${secs}s`;
+        } else {
+            document.getElementById('stat-best-time').textContent = '-';
+        }
+
+        document.getElementById('stat-min-moves').textContent = stats.minMoves !== null ? stats.minMoves : '-';
+
+        this.modalStats.classList.add('open');
+    }
+}
