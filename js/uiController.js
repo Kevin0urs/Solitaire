@@ -557,10 +557,20 @@ export class UIController {
         if (!this.dragState) return null;
         const sequence = this.engine.tableau[this.dragState.colIndex].slice(this.dragState.cardIndex);
 
+        // Center X and top Y of the dragged card element for 100% accurate drop alignment
+        let targetX = clientX;
+        let targetY = clientY;
+
+        if (this.dragState.ghostEl) {
+            const ghostRect = this.dragState.ghostEl.getBoundingClientRect();
+            targetX = ghostRect.left + ghostRect.width / 2;
+            targetY = ghostRect.top + Math.min(ghostRect.height / 2, 45);
+        }
+
         const columns = document.querySelectorAll('.column');
         for (const col of columns) {
             const rect = col.getBoundingClientRect();
-            if (clientX >= rect.left && clientX <= rect.right && clientY >= rect.top && clientY <= rect.bottom + 100) {
+            if (targetX >= rect.left && targetX <= rect.right && targetY >= rect.top - 50 && targetY <= rect.bottom + 150) {
                 const targetColIdx = parseInt(col.dataset.colIndex, 10);
                 if (targetColIdx !== this.dragState.colIndex && this.engine.canDropSequence(sequence, targetColIdx)) {
                     return targetColIdx;

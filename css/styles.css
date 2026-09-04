@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Spider Solitaire 2-Suit - Stylesheet (Tarot Grimaud 1898 - Adaptatif & Anti-Bug Drag)
+   Spider Solitaire 2-Suit - Stylesheet (Tarot Grimaud 1898 - Centrage Parfait Des Colonnes)
    ========================================================================== */
 
 :root {
@@ -141,6 +141,9 @@ html, body {
     border-radius: var(--card-radius);
     transition: background-color 0.2s ease, box-shadow 0.2s ease;
     touch-action: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
 
 .column.drop-target-hover {
@@ -167,7 +170,7 @@ html, body {
 }
 
 .empty-column-slot {
-    width: 100%;
+    width: var(--card-width);
     height: var(--card-height);
     border: 2px dashed rgba(255, 255, 255, 0.5);
     border-radius: var(--card-radius);
@@ -178,6 +181,7 @@ html, body {
     font-weight: 800;
     font-size: clamp(0.8rem, 1vw, 1.1rem);
     background: rgba(0, 0, 0, 0.15);
+    margin: 0 auto;
 }
 
 /* --- BOTTOM DECK & FOUNDATION BAR --- */
@@ -296,6 +300,7 @@ html, body {
 .card {
     position: absolute;
     width: var(--card-width);
+    left: calc((100% - var(--card-width)) / 2);
     height: var(--card-height);
     background-color: var(--card-bg);
     border: 2px solid var(--card-border);
@@ -445,6 +450,7 @@ html, body {
 .drag-ghost .card {
     position: absolute;
     box-shadow: none;
+    left: 0 !important;
 }
 
 /* --- ACTION TOOLBAR --- */
