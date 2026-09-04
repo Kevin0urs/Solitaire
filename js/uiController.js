@@ -247,6 +247,7 @@ export class UIController {
         this.tableauContainer.addEventListener('pointerdown', (e) => this.handlePointerDown(e));
         document.addEventListener('pointermove', (e) => this.handlePointerMove(e));
         document.addEventListener('pointerup', (e) => this.handlePointerUp(e));
+        document.addEventListener('pointercancel', (e) => this.handlePointerCancel(e));
 
         window.addEventListener('resize', () => {
             this.renderBoard();
@@ -321,6 +322,7 @@ export class UIController {
         const cardEl = e.target.closest('.card');
         const columnEl = e.target.closest('.column');
 
+        // Target empty column when a sequence is selected
         if (!cardEl && columnEl && this.selectedSequenceInfo) {
             const targetCol = parseInt(columnEl.dataset.colIndex, 10);
             this.attemptMove(this.selectedSequenceInfo.colIndex, this.selectedSequenceInfo.cardIndex, targetCol);
@@ -332,8 +334,10 @@ export class UIController {
         const colIndex = parseInt(cardEl.dataset.colIndex, 10);
         const cardIndex = parseInt(cardEl.dataset.cardIndex, 10);
 
+        // Verify that cardIndex starts a valid sequence
         if (!this.engine.canMoveSequence(colIndex, cardIndex)) {
             if (this.selectedSequenceInfo) {
+                // Try moving existing selection onto this column
                 this.attemptMove(this.selectedSequenceInfo.colIndex, this.selectedSequenceInfo.cardIndex, colIndex);
             } else {
                 sound.playError();
@@ -342,18 +346,13 @@ export class UIController {
             return;
         }
 
-        if (this.selectedSequenceInfo &&
-            this.selectedSequenceInfo.colIndex === colIndex &&
-            this.selectedSequenceInfo.cardIndex === cardIndex) {
-            this.autoMove(colIndex, cardIndex);
-            return;
-        }
-
-        if (this.selectedSequenceInfo) {
+        // If another sequence was previously selected, clicking on a new column attempts to move the selection there
+        if (this.selectedSequenceInfo && this.selectedSequenceInfo.colIndex !== colIndex) {
             const moved = this.attemptMove(this.selectedSequenceInfo.colIndex, this.selectedSequenceInfo.cardIndex, colIndex);
             if (moved) return;
         }
 
+        // Prepare Drag State
         this.clearHint();
         this.dragState = {
             colIndex,
@@ -388,18 +387,30 @@ export class UIController {
 
         if (this.dragState.isDragging) {
             const dropTargetCol = this.findDropTargetColumn(e.clientX, e.clientY);
+            this.showSourceCardsInTableau();
+            this.cleanupDragGhost();
+
             if (dropTargetCol !== null) {
                 this.attemptMove(this.dragState.colIndex, this.dragState.cardIndex, dropTargetCol);
             } else {
                 sound.playError();
-                this.showSourceCardsInTableau();
+                this.renderBoard();
             }
-            this.cleanupDragGhost();
         } else {
+            // Pure click / tap (No auto-move on single click!)
             this.handleCardClick(this.dragState.colIndex, this.dragState.cardIndex);
         }
 
         this.dragState = null;
+    }
+
+    handlePointerCancel() {
+        if (this.dragState) {
+            this.showSourceCardsInTableau();
+            this.cleanupDragGhost();
+            this.dragState = null;
+            this.renderBoard();
+        }
     }
 
     hideSourceCardsInTableau() {
@@ -427,28 +438,23 @@ export class UIController {
         cardElements.forEach(cardEl => cardEl.classList.remove('dragging-hidden'));
     }
 
+    /**
+     * Single Click / Tap Handling:
+     * Toggles selection ONLY (Auto-move on single click is DISABLED to prevent drag conflicts!).
+     */
     handleCardClick(colIndex, cardIndex) {
-        this.selectedSequenceInfo = { colIndex, cardIndex };
-        sound.playCardFlip();
-
-        const validMoves = this.engine.getValidMoves().filter(m => m.fromCol === colIndex && m.cardIndex === cardIndex);
-
-        if (validMoves.length === 1) {
-            this.attemptMove(colIndex, cardIndex, validMoves[0].toCol);
-        } else {
-            this.renderBoard();
-        }
-    }
-
-    autoMove(colIndex, cardIndex) {
-        const validMoves = this.engine.getValidMoves().filter(m => m.fromCol === colIndex && m.cardIndex === cardIndex);
-        if (validMoves.length > 0) {
-            this.attemptMove(colIndex, cardIndex, validMoves[0].toCol);
-        } else {
-            sound.playError();
+        if (this.selectedSequenceInfo &&
+            this.selectedSequenceInfo.colIndex === colIndex &&
+            this.selectedSequenceInfo.cardIndex === cardIndex) {
+            // Clicked same card again -> deselect
             this.clearSelection();
             this.renderBoard();
+            return;
         }
+
+        this.selectedSequenceInfo = { colIndex, cardIndex };
+        sound.playCardFlip();
+        this.renderBoard();
     }
 
     attemptMove(fromCol, cardIndex, targetCol) {
