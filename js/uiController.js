@@ -2,6 +2,7 @@ import { GameEngine } from './gameEngine.js';
 import { CardRenderer } from './cardRender.js';
 import { sound } from './sound.js';
 import { StorageManager } from './storage.js';
+import { Confetti } from './confetti.js';
 
 export class UIController {
     constructor() {
@@ -65,7 +66,7 @@ export class UIController {
         this.clearSelection();
         this.clearHint();
         this.renderBoard();
-        this.showToast('Nouvelle partie démarrée. Bonne chance !');
+        this.showToast('Bienvenue sur le Solitaire de Mamie Nicole ! Bonne partie ! 💖');
     }
 
     startTimer() {
@@ -119,7 +120,6 @@ export class UIController {
     }
 
     getDynamicCardOffsets() {
-        // Calculate dynamic stack offset based on actual rendered card height (supports 125% zoom!)
         let cardHeight = 190;
         const sampleCard = this.tableauContainer.querySelector('.card');
         if (sampleCard) {
@@ -598,6 +598,7 @@ export class UIController {
     handleWin() {
         this.stopTimer();
         sound.playSequenceComplete();
+        Confetti.launch();
 
         StorageManager.recordWin(this.secondsElapsed, this.engine.moveCount);
 
