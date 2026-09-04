@@ -118,8 +118,22 @@ export class UIController {
         this.updateControlsUI();
     }
 
+    getDynamicCardOffsets() {
+        // Calculate dynamic stack offset based on actual rendered card height (supports 125% zoom!)
+        let cardHeight = 190;
+        const sampleCard = this.tableauContainer.querySelector('.card');
+        if (sampleCard) {
+            const rect = sampleCard.getBoundingClientRect();
+            if (rect.height > 0) cardHeight = rect.height;
+        }
+        const faceUpStep = Math.max(22, Math.round(cardHeight * 0.22));
+        const faceDownStep = Math.max(8, Math.round(cardHeight * 0.08));
+        return { faceUpStep, faceDownStep };
+    }
+
     renderTableau() {
         this.tableauContainer.innerHTML = '';
+        const { faceUpStep, faceDownStep } = this.getDynamicCardOffsets();
 
         for (let colIdx = 0; colIdx < 10; colIdx++) {
             const colEl = document.createElement('div');
@@ -151,13 +165,11 @@ export class UIController {
                     cardDOM.dataset.colIndex = colIdx;
                     cardDOM.dataset.cardIndex = cardIdx;
 
-                    // Ensure stacking z-index so top card completely covers bottom-right badge of previous card!
                     cardDOM.style.zIndex = (cardIdx + 1).toString();
 
-                    // Vertical offset for stacking
                     let topOffset = 0;
                     for (let k = 0; k < cardIdx; k++) {
-                        topOffset += cards[k].faceUp ? 34 : 14;
+                        topOffset += cards[k].faceUp ? faceUpStep : faceDownStep;
                     }
                     cardDOM.style.top = `${topOffset}px`;
 
@@ -235,6 +247,10 @@ export class UIController {
         this.tableauContainer.addEventListener('pointerdown', (e) => this.handlePointerDown(e));
         document.addEventListener('pointermove', (e) => this.handlePointerMove(e));
         document.addEventListener('pointerup', (e) => this.handlePointerUp(e));
+
+        window.addEventListener('resize', () => {
+            this.renderBoard();
+        });
 
         this.btnUndo.addEventListener('click', () => this.handleUndo());
         this.btnRedo.addEventListener('click', () => this.handleRedo());
@@ -316,11 +332,8 @@ export class UIController {
         const colIndex = parseInt(cardEl.dataset.colIndex, 10);
         const cardIndex = parseInt(cardEl.dataset.cardIndex, 10);
 
-        // Check if cardIndex starts a valid sequence to the bottom of the column!
         if (!this.engine.canMoveSequence(colIndex, cardIndex)) {
-            // Covered card or invalid mixed sequence -> CANNOT BE MOVED
             if (this.selectedSequenceInfo) {
-                // If another sequence was selected, attempt to move it onto this column
                 this.attemptMove(this.selectedSequenceInfo.colIndex, this.selectedSequenceInfo.cardIndex, colIndex);
             } else {
                 sound.playError();
@@ -329,7 +342,6 @@ export class UIController {
             return;
         }
 
-        // Tapped already selected card -> auto-move
         if (this.selectedSequenceInfo &&
             this.selectedSequenceInfo.colIndex === colIndex &&
             this.selectedSequenceInfo.cardIndex === cardIndex) {
@@ -342,7 +354,6 @@ export class UIController {
             if (moved) return;
         }
 
-        // Prepare Drag & Selection state
         this.clearHint();
         this.dragState = {
             colIndex,
@@ -360,7 +371,6 @@ export class UIController {
         const dist = Math.hypot(e.clientX - this.dragState.startX, e.clientY - this.dragState.startY);
 
         if (!this.dragState.isDragging && dist > 6) {
-            // Initiate Dragging Ghost & Hide original cards in tableau!
             this.dragState.isDragging = true;
             this.createDragGhost(e.clientX, e.clientY);
             this.hideSourceCardsInTableau();
@@ -484,9 +494,11 @@ export class UIController {
         ghost.style.left = `${clientX - this.dragState.offsetX}px`;
         ghost.style.top = `${clientY - this.dragState.offsetY}px`;
 
+        const { faceUpStep } = this.getDynamicCardOffsets();
+
         sequence.forEach((card, idx) => {
             const cardDOM = CardRenderer.createCardDOM(card, { isDragging: true });
-            cardDOM.style.top = `${idx * 34}px`;
+            cardDOM.style.top = `${idx * faceUpStep}px`;
             ghost.appendChild(cardDOM);
         });
 
