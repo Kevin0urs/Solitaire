@@ -1,17 +1,17 @@
 /**
- * Card Renderer featuring Grimaud 1898 Tarot Historical Face Artwork & Tarot Card Badges
+ * Card Renderer featuring Grimaud 1898 Tarot Historical Face Artwork (Exact Hearts & Spades Suits)
  */
 
 const GRIMAUD_IMAGES = {
     hearts: {
         13: "https://upload.wikimedia.org/wikipedia/commons/a/a4/Tarot_nouveau_-_Grimaud_-_1898_-_Hearts_-_King.jpg",  // Roi de coeur
-        12: "https://upload.wikimedia.org/wikipedia/commons/7/77/Tarot_nouveau_-_Grimaud_-_1898_-_Diamonds_-_Queen.jpg", // Dame de coeur
-        11: "https://upload.wikimedia.org/wikipedia/commons/c/c7/Tarot_nouveau_-_Grimaud_-_1898_-_Diamonds_-_Jack.jpg"   // Valet de coeur
+        12: "https://upload.wikimedia.org/wikipedia/commons/b/bf/Tarot_nouveau_-_Grimaud_-_1898_-_Hearts_-_Queen.jpg", // Dame de coeur
+        11: "https://upload.wikimedia.org/wikipedia/commons/4/41/Tarot_nouveau_-_Grimaud_-_1898_-_Hearts_-_Jack.jpg"   // Valet de coeur
     },
     spades: {
         13: "https://upload.wikimedia.org/wikipedia/commons/2/24/Tarot_nouveau_-_Grimaud_-_1898_-_Spades_-_King.jpg",  // Roi de pique
-        12: "https://upload.wikimedia.org/wikipedia/commons/7/77/Tarot_nouveau_-_Grimaud_-_1898_-_Diamonds_-_Queen.jpg", // Dame de pique
-        11: "https://upload.wikimedia.org/wikipedia/commons/c/c7/Tarot_nouveau_-_Grimaud_-_1898_-_Diamonds_-_Jack.jpg"   // Valet de pique
+        12: "https://upload.wikimedia.org/wikipedia/commons/8/88/Tarot_nouveau_-_Grimaud_-_1898_-_Spades_-_Queen.jpg", // Dame de pique
+        11: "https://upload.wikimedia.org/wikipedia/commons/b/b1/Tarot_nouveau_-_Grimaud_-_1898_-_Spades_-_Jack.jpg"   // Valet de pique
     }
 };
 
@@ -41,7 +41,7 @@ export class CardRenderer {
         let bodyContent = '';
 
         if (card.rank >= 11) {
-            // Face cards (Valet, Dame, Roi) - Grimaud 1898 image takes the FULL card face!
+            // Face cards (Valet, Dame, Roi) - Grimaud 1898 image takes the full card face
             const imgUrl = GRIMAUD_IMAGES[card.suit][card.rank];
             bodyContent = `
                 <div class="full-face-image-container">
