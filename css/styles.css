@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Spider Solitaire 2-Suit - Stylesheet (Tarot Grimaud 1898 - Adaptatif 125% Zoom & High DPI)
+   Spider Solitaire 2-Suit - Stylesheet (Tarot Grimaud 1898 - Adaptatif & Anti-Bug Drag)
    ========================================================================== */
 
 :root {
@@ -15,7 +15,7 @@
     --hint-glow: rgba(241, 196, 15, 0.9);
     --target-glow: rgba(46, 204, 113, 0.9);
     
-    /* Dynamic Fluid Card Dimensions (Adapts seamlessly to 100%, 125%, 150% DPI zoom) */
+    /* Dynamic Fluid Card Dimensions */
     --card-width: clamp(56px, 9.1vw, 114px);
     --card-height: calc(var(--card-width) * 1.72);
     --card-radius: clamp(4px, 0.6vw, 8px);
@@ -34,6 +34,7 @@
     padding: 0;
     user-select: none;
     -webkit-user-select: none;
+    -webkit-user-drag: none;
 }
 
 html, body {
@@ -123,7 +124,7 @@ html, body {
     min-height: 0;
 }
 
-/* Tableau Columns Area with reduced gap between columns for extra large cards */
+/* Tableau Columns Area */
 #tableau-container {
     display: grid;
     grid-template-columns: repeat(10, 1fr);
@@ -131,6 +132,7 @@ html, body {
     flex: 1;
     position: relative;
     min-height: 0;
+    touch-action: none;
 }
 
 .column {
@@ -138,6 +140,7 @@ html, body {
     height: 100%;
     border-radius: var(--card-radius);
     transition: background-color 0.2s ease, box-shadow 0.2s ease;
+    touch-action: none;
 }
 
 .column.drop-target-hover {
@@ -305,6 +308,7 @@ html, body {
     justify-content: space-between;
     padding: 0;
     overflow: hidden;
+    touch-action: none;
 }
 
 .card.face-down {
@@ -391,6 +395,7 @@ html, body {
     height: 100%;
     object-fit: fill;
     display: block;
+    pointer-events: none;
 }
 
 /* Card Body & Pips Layout Container (1..10) */
@@ -404,6 +409,7 @@ html, body {
     padding: clamp(18px, 2.5vw, 30px) clamp(4px, 0.6vw, 8px);
     font-size: clamp(1rem, 1.3vw, 1.45rem);
     font-weight: 900;
+    pointer-events: none;
 }
 
 .pip.center-ace {
@@ -626,7 +632,6 @@ html, body {
     color: #7F8C8D;
 }
 
-/* HIGH-DPI / 125% ZOOM SPECIFIC MEDIA QUERIES */
 @media (max-height: 850px) {
     #tableau-container {
         padding-bottom: 120px;

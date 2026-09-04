@@ -33,7 +33,7 @@ export class UIController {
 
         // Selection & Drag State
         this.selectedSequenceInfo = null; // { colIndex, cardIndex }
-        this.dragState = null; // { colIndex, cardIndex, ghostEl, startX, startY, offsetX, offsetY, isDragging }
+        this.dragState = null; // { pointerId, colIndex, cardIndex, ghostEl, startX, startY, offsetX, offsetY, isDragging }
         this.activeHint = null;
 
         // Timer
@@ -242,6 +242,9 @@ export class UIController {
     // --- INTERACTION & EVENTS ---
 
     initEvents() {
+        // Prevent native HTML drag and drop interferes
+        document.addEventListener('dragstart', (e) => e.preventDefault());
+
         this.stockPileEl.addEventListener('click', () => this.handleStockClick());
 
         this.tableauContainer.addEventListener('pointerdown', (e) => this.handlePointerDown(e));
@@ -319,6 +322,9 @@ export class UIController {
     }
 
     handlePointerDown(e) {
+        // Only trigger on primary button (button === 0)
+        if (e.button !== undefined && e.button !== 0) return;
+
         const cardEl = e.target.closest('.card');
         const columnEl = e.target.closest('.column');
 
@@ -334,10 +340,9 @@ export class UIController {
         const colIndex = parseInt(cardEl.dataset.colIndex, 10);
         const cardIndex = parseInt(cardEl.dataset.cardIndex, 10);
 
-        // Verify that cardIndex starts a valid sequence
+        // Check if cardIndex starts a valid moveable sequence
         if (!this.engine.canMoveSequence(colIndex, cardIndex)) {
             if (this.selectedSequenceInfo) {
-                // Try moving existing selection onto this column
                 this.attemptMove(this.selectedSequenceInfo.colIndex, this.selectedSequenceInfo.cardIndex, colIndex);
             } else {
                 sound.playError();
@@ -346,15 +351,21 @@ export class UIController {
             return;
         }
 
-        // If another sequence was previously selected, clicking on a new column attempts to move the selection there
         if (this.selectedSequenceInfo && this.selectedSequenceInfo.colIndex !== colIndex) {
             const moved = this.attemptMove(this.selectedSequenceInfo.colIndex, this.selectedSequenceInfo.cardIndex, colIndex);
             if (moved) return;
         }
 
-        // Prepare Drag State
+        // Set pointer capture if supported
+        try {
+            if (e.pointerId !== undefined && cardEl.setPointerCapture) {
+                cardEl.setPointerCapture(e.pointerId);
+            }
+        } catch (err) {}
+
         this.clearHint();
         this.dragState = {
+            pointerId: e.pointerId,
             colIndex,
             cardIndex,
             startX: e.clientX,
@@ -367,9 +378,15 @@ export class UIController {
     handlePointerMove(e) {
         if (!this.dragState) return;
 
+        // STRICT SAFETY CHECK: If primary mouse button is NOT currently pressed, CANCEL DRAG IMMEDIATELY!
+        if (e.buttons !== undefined && e.buttons !== 1) {
+            this.handlePointerCancel(e);
+            return;
+        }
+
         const dist = Math.hypot(e.clientX - this.dragState.startX, e.clientY - this.dragState.startY);
 
-        if (!this.dragState.isDragging && dist > 6) {
+        if (!this.dragState.isDragging && dist > 5) {
             this.dragState.isDragging = true;
             this.createDragGhost(e.clientX, e.clientY);
             this.hideSourceCardsInTableau();
@@ -385,27 +402,44 @@ export class UIController {
     handlePointerUp(e) {
         if (!this.dragState) return;
 
+        // Release pointer capture
+        try {
+            if (this.dragState.cardEl && e && e.pointerId !== undefined && this.dragState.cardEl.releasePointerCapture) {
+                this.dragState.cardEl.releasePointerCapture(e.pointerId);
+            }
+        } catch (err) {}
+
         if (this.dragState.isDragging) {
             const dropTargetCol = this.findDropTargetColumn(e.clientX, e.clientY);
             this.showSourceCardsInTableau();
             this.cleanupDragGhost();
 
+            const fromCol = this.dragState.colIndex;
+            const cardIndex = this.dragState.cardIndex;
+            this.dragState = null;
+
             if (dropTargetCol !== null) {
-                this.attemptMove(this.dragState.colIndex, this.dragState.cardIndex, dropTargetCol);
+                this.attemptMove(fromCol, cardIndex, dropTargetCol);
             } else {
                 sound.playError();
                 this.renderBoard();
             }
         } else {
-            // Pure click / tap (No auto-move on single click!)
-            this.handleCardClick(this.dragState.colIndex, this.dragState.cardIndex);
+            const fromCol = this.dragState.colIndex;
+            const cardIndex = this.dragState.cardIndex;
+            this.dragState = null;
+            this.handleCardClick(fromCol, cardIndex);
         }
-
-        this.dragState = null;
     }
 
-    handlePointerCancel() {
+    handlePointerCancel(e) {
         if (this.dragState) {
+            try {
+                if (this.dragState.cardEl && e && e.pointerId !== undefined && this.dragState.cardEl.releasePointerCapture) {
+                    this.dragState.cardEl.releasePointerCapture(e.pointerId);
+                }
+            } catch (err) {}
+
             this.showSourceCardsInTableau();
             this.cleanupDragGhost();
             this.dragState = null;
@@ -438,15 +472,10 @@ export class UIController {
         cardElements.forEach(cardEl => cardEl.classList.remove('dragging-hidden'));
     }
 
-    /**
-     * Single Click / Tap Handling:
-     * Toggles selection ONLY (Auto-move on single click is DISABLED to prevent drag conflicts!).
-     */
     handleCardClick(colIndex, cardIndex) {
         if (this.selectedSequenceInfo &&
             this.selectedSequenceInfo.colIndex === colIndex &&
             this.selectedSequenceInfo.cardIndex === cardIndex) {
-            // Clicked same card again -> deselect
             this.clearSelection();
             this.renderBoard();
             return;
