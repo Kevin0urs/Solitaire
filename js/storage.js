@@ -44,10 +44,10 @@ export class StorageManager {
     static getSettings() {
         try {
             const raw = localStorage.getItem(STORAGE_KEY_SETTINGS);
-            if (!raw) return { theme: 'blue', soundMuted: false };
+            if (!raw) return { soundMuted: false };
             return JSON.parse(raw);
         } catch (e) {
-            return { theme: 'blue', soundMuted: false };
+            return { soundMuted: false };
         }
     }
 

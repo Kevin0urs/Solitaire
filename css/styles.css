@@ -1,23 +1,23 @@
 /* ==========================================================================
-   Spider Solitaire 2-Suit - Stylesheet & Charte Graphique
+   Spider Solitaire 2-Suit - Stylesheet (Tarot Grimaud 1898 Style)
    ========================================================================== */
 
 :root {
     /* Color Palette */
-    --bg-main: #0A3D62; /* Default Midnight Blue */
-    --card-bg: #FAFAFA; /* Off-white card background */
-    --card-border: #CCCCCC;
+    --bg-main: #85D329;
+    --card-bg: #FFFFFF;
+    --card-border: #222222;
     --suit-black: #000000;
     --suit-red: #C0392B;
-    --hover-color: #D0E6FF;
-    --selection-color: #A9CCE3;
-    --selection-glow: rgba(41, 128, 185, 0.6);
-    --hint-glow: rgba(241, 196, 15, 0.8);
-    --target-glow: rgba(46, 204, 113, 0.8);
+    --hover-color: rgba(255, 255, 255, 0.25);
+    --selection-color: #FFF8DC;
+    --selection-glow: rgba(243, 156, 18, 0.9);
+    --hint-glow: rgba(241, 196, 15, 0.9);
+    --target-glow: rgba(46, 204, 113, 0.9);
     
-    /* Dimensions & Typography */
+    /* Tarot Card Dimensions (Ratio ~1:1.75) */
     --card-width: 84px;
-    --card-height: 112px; /* Ratio 3:4 */
+    --card-height: 148px;
     --card-radius: 6px;
     --font-family: 'Segoe UI', Roboto, Inter, -apple-system, sans-serif;
     --font-size-base: 16px;
@@ -25,19 +25,6 @@
     /* Header & Control bar */
     --bar-bg: rgba(0, 0, 0, 0.35);
     --text-light: #FFFFFF;
-}
-
-/* Theme Options */
-body.theme-blue {
-    --bg-main: #0A3D62;
-}
-
-body.theme-dark {
-    --bg-main: #1E1E1E;
-}
-
-body.theme-green {
-    --bg-main: #1E6F40;
 }
 
 /* Reset & Layout */
@@ -55,9 +42,14 @@ html, body {
     overflow: hidden;
     font-family: var(--font-family);
     font-size: var(--font-size-base);
-    background-color: var(--bg-main);
+    
+    /* Fixed 2-Green Sunburst Ray Background Centered at Top */
+    background: repeating-conic-gradient(
+        from -7.5deg at 50% 0%,
+        #99E335 0deg 15deg,
+        #7AC720 15deg 30deg
+    );
     color: var(--text-light);
-    transition: background-color 0.3s ease;
 }
 
 #app-container {
@@ -65,7 +57,7 @@ html, body {
     flex-direction: column;
     width: 100vw;
     height: 100vh;
-    max-width: 1400px;
+    max-width: 1440px;
     margin: 0 auto;
     padding: 10px;
 }
@@ -76,18 +68,18 @@ html, body {
     justify-content: space-between;
     align-items: center;
     background: var(--bar-bg);
-    padding: 10px 18px;
+    padding: 8px 18px;
     border-radius: 10px;
-    margin-bottom: 12px;
+    margin-bottom: 10px;
     backdrop-filter: blur(5px);
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.25);
 }
 
 .brand-title {
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 1.3rem;
+    font-size: 1.25rem;
     font-weight: 700;
     color: #FFFFFF;
 }
@@ -102,8 +94,8 @@ html, body {
 
 .stats-display {
     display: flex;
-    gap: 20px;
-    font-size: 1.1rem;
+    gap: 16px;
+    font-size: 1.05rem;
     font-weight: 600;
 }
 
@@ -111,30 +103,14 @@ html, body {
     display: flex;
     align-items: center;
     gap: 6px;
-    background: rgba(255, 255, 255, 0.1);
-    padding: 6px 14px;
+    background: rgba(255, 255, 255, 0.15);
+    padding: 5px 12px;
     border-radius: 6px;
 }
 
 .stat-label {
-    opacity: 0.8;
-    font-size: 0.95rem;
-}
-
-.header-actions {
-    display: flex;
-    gap: 10px;
-}
-
-select.theme-select {
-    padding: 6px 12px;
-    border-radius: 6px;
-    border: none;
-    background: #FFFFFF;
-    color: #333333;
-    font-size: 0.95rem;
-    font-weight: 600;
-    cursor: pointer;
+    opacity: 0.85;
+    font-size: 0.9rem;
 }
 
 /* --- MAIN PLAYFIELD --- */
@@ -152,31 +128,31 @@ select.theme-select {
     gap: 8px;
     flex: 1;
     position: relative;
-    padding-bottom: 120px;
+    padding-bottom: 150px;
 }
 
 .column {
     position: relative;
     height: 100%;
-    min-height: 250px;
+    min-height: 280px;
     border-radius: var(--card-radius);
     transition: background-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .column.drop-target-hover {
     background-color: var(--hover-color);
-    box-shadow: 0 0 12px var(--target-glow);
+    box-shadow: 0 0 14px var(--target-glow);
 }
 
 .column.hint-target-column {
-    box-shadow: 0 0 15px var(--hint-glow);
-    background-color: rgba(241, 196, 15, 0.15);
+    box-shadow: 0 0 16px var(--hint-glow);
+    background-color: rgba(241, 196, 15, 0.2);
     border-radius: 8px;
 }
 
 .column.shake-empty {
     animation: shake 0.4s ease-in-out;
-    background: rgba(231, 76, 60, 0.25);
+    background: rgba(231, 76, 60, 0.3);
     border: 2px dashed #E74C3C;
 }
 
@@ -189,14 +165,15 @@ select.theme-select {
 .empty-column-slot {
     width: 100%;
     height: var(--card-height);
-    border: 2px dashed rgba(255, 255, 255, 0.3);
+    border: 2px dashed rgba(255, 255, 255, 0.4);
     border-radius: var(--card-radius);
     display: flex;
     justify-content: center;
     align-items: center;
-    color: rgba(255, 255, 255, 0.5);
-    font-weight: 600;
+    color: rgba(255, 255, 255, 0.6);
+    font-weight: 700;
     font-size: 0.9rem;
+    background: rgba(0, 0, 0, 0.1);
 }
 
 /* --- BOTTOM DECK & FOUNDATION BAR --- */
@@ -204,7 +181,7 @@ select.theme-select {
     display: flex;
     justify-content: space-between;
     align-items: flex-end;
-    padding: 10px 15px;
+    padding: 8px 15px;
     margin-top: auto;
 }
 
@@ -218,9 +195,10 @@ select.theme-select {
 
 .stock-title {
     font-size: 0.85rem;
-    font-weight: 600;
+    font-weight: 700;
     margin-bottom: 4px;
-    color: rgba(255, 255, 255, 0.9);
+    color: #FFFFFF;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.5);
 }
 
 #stock-pile {
@@ -233,26 +211,26 @@ select.theme-select {
     position: absolute;
     width: var(--card-width);
     height: var(--card-height);
-    background: #1A5276;
-    border: 2px solid #FAFAFA;
+    background: #1C2833;
+    border: 2px solid #FFFFFF;
     border-radius: var(--card-radius);
-    box-shadow: -2px 2px 5px rgba(0, 0, 0, 0.3);
-    background-image: repeating-linear-gradient(45deg, #1F618D 0, #1F618D 10px, #154360 10px, #154360 20px);
+    box-shadow: -2px 2px 6px rgba(0, 0, 0, 0.35);
+    background-image: repeating-linear-gradient(45deg, #283747 0, #283747 10px, #1C2833 10px, #1C2833 20px);
 }
 
 .empty-stock-slot {
     width: var(--card-width);
     height: var(--card-height);
-    border: 2px dashed rgba(255, 255, 255, 0.3);
+    border: 2px dashed rgba(255, 255, 255, 0.4);
     border-radius: var(--card-radius);
     display: flex;
     align-items: center;
     justify-content: center;
-    color: rgba(255, 255, 255, 0.4);
-    font-weight: 600;
+    color: rgba(255, 255, 255, 0.5);
+    font-weight: 700;
 }
 
-/* Foundation Area (Completed Runs) */
+/* Foundation Area */
 .foundation-area {
     display: flex;
     flex-direction: column;
@@ -261,8 +239,9 @@ select.theme-select {
 
 .foundation-title {
     font-size: 0.85rem;
-    font-weight: 600;
+    font-weight: 700;
     margin-bottom: 4px;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.5);
 }
 
 #foundation-container {
@@ -273,58 +252,64 @@ select.theme-select {
 .foundation-slot {
     width: calc(var(--card-width) * 0.7);
     height: calc(var(--card-height) * 0.7);
-    border: 2px dashed rgba(255, 255, 255, 0.3);
+    border: 2px dashed rgba(255, 255, 255, 0.4);
     border-radius: 4px;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(0, 0, 0, 0.2);
+    background: rgba(0, 0, 0, 0.15);
 }
 
 .foundation-slot.completed {
     border: 2px solid #F1C40F;
-    background: #FAFAFA;
+    background: #FFFFFF;
     font-weight: 800;
     font-size: 1.1rem;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
 }
 
 .slot-placeholder {
     font-size: 0.75rem;
-    color: rgba(255, 255, 255, 0.4);
+    color: rgba(255, 255, 255, 0.5);
 }
 
-/* --- CARDS DESIGN --- */
+/* --- TAROT CARDS DESIGN --- */
 .card {
     position: absolute;
     width: var(--card-width);
     height: var(--card-height);
     background-color: var(--card-bg);
-    border: 1px solid var(--card-border);
+    border: 1.5px solid var(--card-border);
     border-radius: var(--card-radius);
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.25);
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
     cursor: pointer;
     transition: transform 0.15s ease, box-shadow 0.15s ease;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    padding: 4px;
+    padding: 0;
     overflow: hidden;
 }
 
 .card.face-down {
     background: #1B4F72;
     border: 2px solid #FFFFFF;
-    background-image: radial-gradient(#2E86C1 15%, transparent 16%), radial-gradient(#2874A6 15%, transparent 16%);
+    background-image: radial-gradient(#2874A6 15%, transparent 16%), radial-gradient(#1B4F72 15%, transparent 16%);
     background-size: 12px 12px;
     background-position: 0 0, 6px 6px;
 }
 
+/* Hide card in initial position during Drag & Drop */
+.card.dragging-hidden {
+    opacity: 0 !important;
+    pointer-events: none !important;
+}
+
+/* Selected Card Highlight */
 .card.selected {
-    background-color: var(--selection-color);
-    box-shadow: 0 0 14px var(--selection-glow), 0 4px 10px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 0 0 3px #F39C12, 0 0 16px rgba(243, 156, 18, 0.9), 0 6px 14px rgba(0,0,0,0.4);
     transform: translateY(-4px);
-    border: 2px solid #2980B9;
+    z-index: 100 !important;
 }
 
 .card.hint-source {
@@ -333,69 +318,105 @@ select.theme-select {
 
 @keyframes hintPulse {
     0% { box-shadow: 0 0 5px var(--hint-glow); }
-    100% { box-shadow: 0 0 20px var(--hint-glow), 0 0 30px #F39C12; transform: translateY(-4px); }
+    100% { box-shadow: 0 0 22px var(--hint-glow), 0 0 32px #F39C12; transform: translateY(-4px); }
 }
 
-.card-corner {
-    display: flex;
-    flex-direction: column;
+/* Tarot Corner Badges (Index boxes) */
+.card-badge {
+    position: absolute;
+    display: inline-flex;
     align-items: center;
-    line-height: 1;
+    gap: 2px;
+    background: #FFFFFF;
+    border: 1px solid #D5D8DC;
+    border-radius: 4px;
+    padding: 1px 4px;
     font-weight: 800;
+    font-size: 0.95rem;
+    line-height: 1;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    z-index: 10;
 }
 
-.card-corner.top-left {
-    align-self: flex-start;
+.card-badge.top-left {
+    top: 3px;
+    left: 3px;
 }
 
-.card-corner.bottom-right {
-    align-self: flex-end;
+.card-badge.bottom-right {
+    bottom: 3px;
+    right: 3px;
     transform: rotate(180deg);
 }
 
-.card-rank {
-    font-size: 1.15rem;
+.badge-rank {
+    font-size: 1rem;
 }
 
-.card-suit-symbol {
-    font-size: 1.1rem;
+.badge-suit {
+    font-size: 0.95rem;
 }
 
-.card-body {
-    flex: 1;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-
-.center-ace-pip {
-    font-size: 2.8rem;
-    font-weight: bold;
-}
-
-.pips-grid {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    align-items: center;
-    gap: 2px 4px;
-    font-size: 1.1rem;
-    font-weight: bold;
-    width: 100%;
-}
-
-.face-card-svg {
+/* Full Face Image Container for Figures (Grimaud 1898) */
+.full-face-image-container {
+    position: absolute;
+    top: 0;
+    left: 0;
     width: 100%;
     height: 100%;
-    max-height: 70px;
+    overflow: hidden;
+    border-radius: var(--card-radius);
+    z-index: 1;
 }
+
+.grimaud-img-full {
+    width: 100%;
+    height: 100%;
+    object-fit: fill;
+    display: block;
+}
+
+/* Card Body & Pips Layout Container (1..10) */
+.pips-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-around;
+    align-content: space-around;
+    width: 100%;
+    height: 100%;
+    padding: 22px 6px;
+    font-size: 1.1rem;
+    font-weight: bold;
+}
+
+.pip.center-ace {
+    font-size: 2.8rem;
+    margin: auto;
+}
+
+.pips-grid-2 { display: flex; flex-direction: column; justify-content: space-between; align-items: center; }
+.pips-grid-3 { display: flex; flex-direction: column; justify-content: space-between; align-items: center; }
+.pips-grid-4 { display: grid; grid-template-columns: 1fr 1fr; align-content: space-between; justify-items: center; }
+.pips-grid-5 { display: grid; grid-template-columns: 1fr 1fr; align-content: space-between; justify-items: center; position: relative; }
+.pips-grid-5 .pip:nth-child(5) { position: absolute; top: 42%; left: 38%; }
+.pips-grid-6 { display: grid; grid-template-columns: 1fr 1fr; align-content: space-between; justify-items: center; }
+.pips-grid-7 { display: grid; grid-template-columns: 1fr 1fr; align-content: space-between; justify-items: center; position: relative; }
+.pips-grid-7 .pip:nth-child(7) { position: absolute; top: 22%; left: 38%; }
+.pips-grid-8 { display: grid; grid-template-columns: 1fr 1fr; align-content: space-between; justify-items: center; position: relative; }
+.pips-grid-8 .pip:nth-child(7) { position: absolute; top: 22%; left: 38%; }
+.pips-grid-8 .pip:nth-child(8) { position: absolute; top: 62%; left: 38%; }
+.pips-grid-9 { display: grid; grid-template-columns: 1fr 1fr; align-content: space-between; justify-items: center; position: relative; }
+.pips-grid-9 .pip:nth-child(9) { position: absolute; top: 42%; left: 38%; }
+.pips-grid-10 { display: grid; grid-template-columns: 1fr 1fr; align-content: space-between; justify-items: center; position: relative; }
+.pips-grid-10 .pip:nth-child(9) { position: absolute; top: 22%; left: 38%; }
+.pips-grid-10 .pip:nth-child(10) { position: absolute; top: 62%; left: 38%; }
 
 /* Drag Ghost Element */
 .drag-ghost {
     position: fixed;
     pointer-events: none;
     z-index: 9999;
-    filter: drop-shadow(0 10px 15px rgba(0,0,0,0.5));
+    filter: drop-shadow(0 12px 18px rgba(0,0,0,0.5));
 }
 
 .drag-ghost .card {
@@ -407,8 +428,8 @@ select.theme-select {
 #action-bar {
     display: flex;
     justify-content: center;
-    gap: 14px;
-    padding: 12px;
+    gap: 12px;
+    padding: 10px;
     background: var(--bar-bg);
     border-radius: 10px;
     backdrop-filter: blur(5px);
@@ -417,11 +438,11 @@ select.theme-select {
 .btn {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    padding: 10px 18px;
+    gap: 6px;
+    padding: 8px 16px;
     border: none;
     border-radius: 8px;
-    font-size: 1rem;
+    font-size: 0.95rem;
     font-weight: 700;
     cursor: pointer;
     background: #FFFFFF;
@@ -589,11 +610,11 @@ select.theme-select {
 @media (max-width: 900px) {
     :root {
         --card-width: 62px;
-        --card-height: 83px;
+        --card-height: 108px;
     }
 
     #header-bar {
-        padding: 8px 12px;
+        padding: 6px 10px;
     }
 
     .brand-title {
@@ -601,20 +622,17 @@ select.theme-select {
     }
 
     .stats-display {
-        gap: 10px;
-        font-size: 0.95rem;
+        gap: 8px;
+        font-size: 0.9rem;
     }
 
     .btn {
-        padding: 8px 12px;
-        font-size: 0.9rem;
+        padding: 6px 10px;
+        font-size: 0.85rem;
     }
 
-    .card-rank {
-        font-size: 0.95rem;
-    }
-
-    .card-suit-symbol {
-        font-size: 0.9rem;
+    .card-badge {
+        padding: 1px 3px;
+        font-size: 0.8rem;
     }
 }

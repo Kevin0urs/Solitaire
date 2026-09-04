@@ -17,10 +17,10 @@ export class Card {
 
     getRankLabel() {
         switch (this.rank) {
-            case 1: return 'A';
-            case 11: return 'J';
-            case 12: return 'Q';
-            case 13: return 'K';
+            case 1: return '1';
+            case 11: return 'V';
+            case 12: return 'D';
+            case 13: return 'R';
             default: return this.rank.toString();
         }
     }

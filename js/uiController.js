@@ -24,7 +24,6 @@ export class UIController {
         this.btnRules = document.getElementById('btn-rules');
         this.btnStats = document.getElementById('btn-stats');
         this.btnSound = document.getElementById('btn-sound');
-        this.themeSelect = document.getElementById('theme-select');
 
         this.toastEl = document.getElementById('toast-message');
         this.modalWin = document.getElementById('modal-win');
@@ -32,8 +31,8 @@ export class UIController {
         this.modalStats = document.getElementById('modal-stats');
 
         // Selection & Drag State
-        this.selectedSequenceInfo = null; // { colIndex, cardIndex, element }
-        this.dragState = null; // { colIndex, cardIndex, ghostEl, startX, startY, offsetX, offsetY }
+        this.selectedSequenceInfo = null; // { colIndex, cardIndex }
+        this.dragState = null; // { colIndex, cardIndex, ghostEl, startX, startY, offsetX, offsetY, isDragging }
         this.activeHint = null;
 
         // Timer
@@ -45,12 +44,7 @@ export class UIController {
     }
 
     init() {
-        // Load saved theme
         const settings = StorageManager.getSettings();
-        if (settings.theme) {
-            this.themeSelect.value = settings.theme;
-            this.setTheme(settings.theme);
-        }
         if (settings.soundMuted) {
             sound.muted = true;
             this.updateSoundButtonUI();
@@ -96,13 +90,6 @@ export class UIController {
         const secs = this.secondsElapsed % 60;
         const formatted = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
         this.timerEl.textContent = formatted;
-    }
-
-    setTheme(themeName) {
-        document.body.className = `theme-${themeName}`;
-        const settings = StorageManager.getSettings();
-        settings.theme = themeName;
-        StorageManager.saveSettings(settings);
     }
 
     updateSoundButtonUI() {
@@ -164,11 +151,13 @@ export class UIController {
                     cardDOM.dataset.colIndex = colIdx;
                     cardDOM.dataset.cardIndex = cardIdx;
 
+                    // Ensure stacking z-index so top card completely covers bottom-right badge of previous card!
+                    cardDOM.style.zIndex = (cardIdx + 1).toString();
+
                     // Vertical offset for stacking
-                    // Face-down cards offset less than face-up cards for compact vertical layout
                     let topOffset = 0;
                     for (let k = 0; k < cardIdx; k++) {
-                        topOffset += cards[k].faceUp ? 28 : 12;
+                        topOffset += cards[k].faceUp ? 34 : 14;
                     }
                     cardDOM.style.top = `${topOffset}px`;
 
@@ -190,7 +179,6 @@ export class UIController {
         this.stockPileEl.innerHTML = '';
 
         if (remaining > 0) {
-            // Render layered stock deck
             const layers = Math.min(5, Math.ceil(remaining / 10));
             for (let i = 0; i < layers; i++) {
                 const stockCard = document.createElement('div');
@@ -221,9 +209,9 @@ export class UIController {
                 slot.classList.add('completed');
                 const symbol = run.suit === 'spades' ? '♠' : '♥';
                 const color = run.suit === 'spades' ? '#000000' : '#C0392B';
-                slot.innerHTML = `<span style="color: ${color}">K${symbol}</span>`;
+                slot.innerHTML = `<span style="color: ${color}">R${symbol}</span>`;
             } else {
-                slot.innerHTML = `<span class="slot-placeholder">K-A</span>`;
+                slot.innerHTML = `<span class="slot-placeholder">R-1</span>`;
             }
 
             this.foundationContainer.appendChild(slot);
@@ -242,15 +230,12 @@ export class UIController {
     // --- INTERACTION & EVENTS ---
 
     initEvents() {
-        // Stock click
         this.stockPileEl.addEventListener('click', () => this.handleStockClick());
 
-        // Event delegation for Tableau columns
         this.tableauContainer.addEventListener('pointerdown', (e) => this.handlePointerDown(e));
         document.addEventListener('pointermove', (e) => this.handlePointerMove(e));
         document.addEventListener('pointerup', (e) => this.handlePointerUp(e));
 
-        // Control buttons
         this.btnUndo.addEventListener('click', () => this.handleUndo());
         this.btnRedo.addEventListener('click', () => this.handleRedo());
         this.btnHint.addEventListener('click', () => this.handleHint());
@@ -263,13 +248,10 @@ export class UIController {
         this.btnRules.addEventListener('click', () => this.modalRules.classList.add('open'));
         this.btnStats.addEventListener('click', () => this.showStatsModal());
         this.btnSound.addEventListener('click', () => {
-            const isMuted = sound.toggleMute();
+            sound.toggleMute();
             this.updateSoundButtonUI();
         });
 
-        this.themeSelect.addEventListener('change', (e) => this.setTheme(e.target.value));
-
-        // Close modals
         document.querySelectorAll('.modal-close').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const modal = e.target.closest('.modal');
@@ -299,7 +281,7 @@ export class UIController {
 
         if (result.completedInfoList && result.completedInfoList.length > 0) {
             sound.playSequenceComplete();
-            this.showToast('🎉 Suite complète (K à A) formée !');
+            this.showToast('🎉 Suite complète (Roi à 1) formée !');
         }
 
         this.renderBoard();
@@ -323,7 +305,6 @@ export class UIController {
         const cardEl = e.target.closest('.card');
         const columnEl = e.target.closest('.column');
 
-        // Handle tap on empty column when a sequence is selected
         if (!cardEl && columnEl && this.selectedSequenceInfo) {
             const targetCol = parseInt(columnEl.dataset.colIndex, 10);
             this.attemptMove(this.selectedSequenceInfo.colIndex, this.selectedSequenceInfo.cardIndex, targetCol);
@@ -335,27 +316,28 @@ export class UIController {
         const colIndex = parseInt(cardEl.dataset.colIndex, 10);
         const cardIndex = parseInt(cardEl.dataset.cardIndex, 10);
 
+        // Check if cardIndex starts a valid sequence to the bottom of the column!
         if (!this.engine.canMoveSequence(colIndex, cardIndex)) {
-            // Cannot move sequence, if tapping an unmovable card while having selection, try move or clear
+            // Covered card or invalid mixed sequence -> CANNOT BE MOVED
             if (this.selectedSequenceInfo) {
+                // If another sequence was selected, attempt to move it onto this column
                 this.attemptMove(this.selectedSequenceInfo.colIndex, this.selectedSequenceInfo.cardIndex, colIndex);
             } else {
                 sound.playError();
+                this.showToast('⚠️ Impossible de déplacer cette carte : la suite au-dessus n\'est pas valide !');
             }
             return;
         }
 
-        // Tap-to-move / Drag setup
+        // Tapped already selected card -> auto-move
         if (this.selectedSequenceInfo &&
             this.selectedSequenceInfo.colIndex === colIndex &&
             this.selectedSequenceInfo.cardIndex === cardIndex) {
-            // Tapped already selected card -> try auto-move to best target
             this.autoMove(colIndex, cardIndex);
             return;
         }
 
         if (this.selectedSequenceInfo) {
-            // A different sequence was already selected, try moving it onto this column!
             const moved = this.attemptMove(this.selectedSequenceInfo.colIndex, this.selectedSequenceInfo.cardIndex, colIndex);
             if (moved) return;
         }
@@ -378,9 +360,10 @@ export class UIController {
         const dist = Math.hypot(e.clientX - this.dragState.startX, e.clientY - this.dragState.startY);
 
         if (!this.dragState.isDragging && dist > 6) {
-            // Initiate Dragging Ghost
+            // Initiate Dragging Ghost & Hide original cards in tableau!
             this.dragState.isDragging = true;
             this.createDragGhost(e.clientX, e.clientY);
+            this.hideSourceCardsInTableau();
         }
 
         if (this.dragState.isDragging && this.dragState.ghostEl) {
@@ -394,35 +377,55 @@ export class UIController {
         if (!this.dragState) return;
 
         if (this.dragState.isDragging) {
-            // Drag dropped
             const dropTargetCol = this.findDropTargetColumn(e.clientX, e.clientY);
             if (dropTargetCol !== null) {
                 this.attemptMove(this.dragState.colIndex, this.dragState.cardIndex, dropTargetCol);
             } else {
                 sound.playError();
+                this.showSourceCardsInTableau();
             }
             this.cleanupDragGhost();
         } else {
-            // It was a tap/click!
             this.handleCardClick(this.dragState.colIndex, this.dragState.cardIndex);
         }
 
         this.dragState = null;
     }
 
+    hideSourceCardsInTableau() {
+        if (!this.dragState) return;
+        const { colIndex, cardIndex } = this.dragState;
+        const colEl = document.querySelector(`.column[data-col-index="${colIndex}"]`);
+        if (!colEl) return;
+
+        const cardElements = colEl.querySelectorAll('.card');
+        cardElements.forEach(cardEl => {
+            const cIdx = parseInt(cardEl.dataset.cardIndex, 10);
+            if (cIdx >= cardIndex) {
+                cardEl.classList.add('dragging-hidden');
+            }
+        });
+    }
+
+    showSourceCardsInTableau() {
+        if (!this.dragState) return;
+        const { colIndex } = this.dragState;
+        const colEl = document.querySelector(`.column[data-col-index="${colIndex}"]`);
+        if (!colEl) return;
+
+        const cardElements = colEl.querySelectorAll('.card');
+        cardElements.forEach(cardEl => cardEl.classList.remove('dragging-hidden'));
+    }
+
     handleCardClick(colIndex, cardIndex) {
-        // Selection toggle
         this.selectedSequenceInfo = { colIndex, cardIndex };
         sound.playCardFlip();
 
-        // Check if there is only 1 unambiguous best move, auto-move!
         const validMoves = this.engine.getValidMoves().filter(m => m.fromCol === colIndex && m.cardIndex === cardIndex);
 
         if (validMoves.length === 1) {
-            // Auto move to single valid target
             this.attemptMove(colIndex, cardIndex, validMoves[0].toCol);
         } else {
-            // Re-render to show selection and target highlights
             this.renderBoard();
         }
     }
@@ -430,7 +433,6 @@ export class UIController {
     autoMove(colIndex, cardIndex) {
         const validMoves = this.engine.getValidMoves().filter(m => m.fromCol === colIndex && m.cardIndex === cardIndex);
         if (validMoves.length > 0) {
-            // Move to highest score target
             this.attemptMove(colIndex, cardIndex, validMoves[0].toCol);
         } else {
             sound.playError();
@@ -456,7 +458,7 @@ export class UIController {
 
         if (res.completedInfo) {
             sound.playSequenceComplete();
-            this.showToast('🎉 Suite complète retirée ! (K à A)');
+            this.showToast('🎉 Suite complète retirée ! (Roi à 1)');
         }
 
         this.renderBoard();
@@ -484,7 +486,7 @@ export class UIController {
 
         sequence.forEach((card, idx) => {
             const cardDOM = CardRenderer.createCardDOM(card, { isDragging: true });
-            cardDOM.style.top = `${idx * 28}px`;
+            cardDOM.style.top = `${idx * 34}px`;
             ghost.appendChild(cardDOM);
         });
 
