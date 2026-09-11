@@ -4,18 +4,33 @@ export class GameEngine {
     constructor() {
         this.tableau = Array.from({ length: 10 }, () => []);
         this.stock = [];
-        this.completedRuns = []; // Array of completed suit sets (e.g. { suit: 'spades', id: ... })
+        this.completedRuns = [];
         this.moveCount = 0;
         this.history = [];
         this.redoStack = [];
+        this.mode = '2suits'; // '1suit' | '2suits'
+        this.difficulty = 'hard'; // 'normal' | 'hard'
     }
 
     /**
-     * Initializes a new game of Spider Solitaire 2-Suit
+     * Initializes game with mode ('1suit'|'2suits') and difficulty ('normal'|'hard')
      */
-    initGame() {
-        const fullDeck = Deck.createSpider2SuitDeck();
-        const shuffled = Deck.shuffle(fullDeck);
+    initGame(mode = '2suits', difficulty = 'hard') {
+        this.mode = mode;
+        this.difficulty = difficulty;
+
+        let fullDeck = [];
+        if (mode === '1suit') {
+            const deck1 = Deck.createSpider1SuitDeck();
+            fullDeck = Deck.shuffle(deck1);
+        } else {
+            if (difficulty === 'normal') {
+                fullDeck = Deck.createFavorable2SuitDeal();
+            } else {
+                const deck2 = Deck.createSpider2SuitDeck();
+                fullDeck = Deck.shuffle(deck2);
+            }
+        }
 
         this.tableau = Array.from({ length: 10 }, () => []);
         this.stock = [];
@@ -24,22 +39,18 @@ export class GameEngine {
         this.history = [];
         this.redoStack = [];
 
-        // Deal initial cards:
-        // Cols 0-3: 6 cards (5 hidden, 1 faceUp)
-        // Cols 4-9: 5 cards (4 hidden, 1 faceUp)
         let cardIdx = 0;
         for (let col = 0; col < 10; col++) {
             const count = col < 4 ? 6 : 5;
             for (let i = 0; i < count; i++) {
-                const card = shuffled[cardIdx++];
+                const card = fullDeck[cardIdx++];
                 card.faceUp = (i === count - 1);
                 this.tableau[col].push(card);
             }
         }
 
-        // Remaining 50 cards go to stock
-        while (cardIdx < shuffled.length) {
-            const card = shuffled[cardIdx++];
+        while (cardIdx < fullDeck.length) {
+            const card = fullDeck[cardIdx++];
             card.faceUp = false;
             this.stock.push(card);
         }
@@ -98,7 +109,7 @@ export class GameEngine {
         if (targetCol < 0 || targetCol >= 10) return false;
 
         const col = this.tableau[targetCol];
-        if (col.length === 0) return true; // Empty column can receive any valid sequence
+        if (col.length === 0) return true;
 
         const topCard = col[col.length - 1];
         if (!topCard.faceUp) return false;
@@ -107,7 +118,7 @@ export class GameEngine {
     }
 
     /**
-     * Executes a card sequence move from fromCol (starting at cardIndex) to targetCol
+     * Executes a card sequence move from fromCol to targetCol
      */
     moveSequence(fromCol, cardIndex, targetCol) {
         if (fromCol === targetCol) return { success: false, reason: 'SAME_COLUMN' };
@@ -121,13 +132,11 @@ export class GameEngine {
 
         this.saveSnapshot();
 
-        // Perform move
         this.tableau[fromCol].splice(cardIndex);
         this.tableau[targetCol].push(...sequence);
         this.moveCount++;
 
         let flippedCard = null;
-        // Flip top card of source column if faceDown
         const sourceCol = this.tableau[fromCol];
         if (sourceCol.length > 0) {
             const topSource = sourceCol[sourceCol.length - 1];
@@ -137,7 +146,6 @@ export class GameEngine {
             }
         }
 
-        // Check completed sequence in target column
         const completedInfo = this.checkAndRemoveCompletedSequence(targetCol);
 
         return {
@@ -154,15 +162,13 @@ export class GameEngine {
 
     /**
      * Checks if targetCol contains a completed K -> A sequence of the SAME suit.
-     * If found, removes it from tableau and adds to completedRuns.
      */
     checkAndRemoveCompletedSequence(colIndex) {
         const col = this.tableau[colIndex];
         if (col.length < 13) return null;
 
-        // Check top 13 cards
         const sub = col.slice(col.length - 13);
-        if (sub[0].rank !== 13) return null; // Must start with King
+        if (sub[0].rank !== 13) return null;
 
         const suit = sub[0].suit;
         for (let i = 0; i < 13; i++) {
@@ -172,12 +178,10 @@ export class GameEngine {
             }
         }
 
-        // Complete sequence found! Remove top 13 cards
         const removedCards = col.splice(col.length - 13, 13);
         const runData = { suit, cards: removedCards, timestamp: Date.now() };
         this.completedRuns.push(runData);
 
-        // Auto flip card underneath if faceDown
         let flippedCard = null;
         if (col.length > 0) {
             const top = col[col.length - 1];
@@ -197,7 +201,6 @@ export class GameEngine {
 
     /**
      * Checks if stock can be dealt.
-     * Stock must have >= 10 cards AND NO column can be empty.
      */
     canDealStock() {
         if (this.stock.length < 10) return { canDeal: false, reason: 'NO_STOCK' };
@@ -245,7 +248,7 @@ export class GameEngine {
     }
 
     /**
-     * Hint Engine: finds legal moves and ranks them by strategic value
+     * Hint Engine
      */
     getValidMoves() {
         const moves = [];
@@ -254,7 +257,6 @@ export class GameEngine {
             const col = this.tableau[fromCol];
             if (col.length === 0) continue;
 
-            // Find all valid start indices for sequences in fromCol
             for (let cardIdx = 0; cardIdx < col.length; cardIdx++) {
                 if (!this.canMoveSequence(fromCol, cardIdx)) continue;
 
@@ -271,31 +273,24 @@ export class GameEngine {
 
                         let score = 0;
 
-                        // Calculate strategic score
                         if (targetTopCard) {
                             if (targetTopCard.suit === firstCard.suit) {
-                                // Same suit match!
                                 score += 80;
                             } else {
-                                // Cross suit match
                                 score += 30;
                             }
                         } else {
-                            // Target is empty column
                             if (cardIdx === 0 && col.length === sequence.length) {
-                                // Moving entire column to empty column doesn't accomplish anything unless breaking a non-pure sequence above, skip redundant moves
                                 score += 5;
                             } else {
                                 score += 50;
                             }
                         }
 
-                        // Bonus if this move reveals a hidden card in source column
                         if (cardUnderneath && !cardUnderneath.faceUp) {
                             score += 50;
                         }
 
-                        // Bonus if it empties a column (allowing free placement)
                         if (cardIdx === 0) {
                             score += 20;
                         }
@@ -312,21 +307,14 @@ export class GameEngine {
             }
         }
 
-        // Sort by highest score first
         moves.sort((a, b) => b.score - a.score);
         return moves;
     }
 
-    /**
-     * Checks if player has won (8 completed runs)
-     */
     isGameWon() {
         return this.completedRuns.length === 8;
     }
 
-    /**
-     * Undo last action
-     */
     undo() {
         if (this.history.length === 0) return false;
 
@@ -347,9 +335,6 @@ export class GameEngine {
         return true;
     }
 
-    /**
-     * Redo last undone action
-     */
     redo() {
         if (this.redoStack.length === 0) return false;
 

@@ -17,6 +17,7 @@ export class UIController {
         this.moveCountEl = document.getElementById('move-count');
         this.timerEl = document.getElementById('timer-count');
         this.completedCountEl = document.getElementById('completed-count');
+        this.modeBadgeEl = document.getElementById('mode-badge');
         
         this.btnUndo = document.getElementById('btn-undo');
         this.btnRedo = document.getElementById('btn-redo');
@@ -25,11 +26,17 @@ export class UIController {
         this.btnRules = document.getElementById('btn-rules');
         this.btnStats = document.getElementById('btn-stats');
         this.btnSound = document.getElementById('btn-sound');
+        this.btnWinRestart = document.getElementById('btn-win-restart');
 
         this.toastEl = document.getElementById('toast-message');
         this.modalWin = document.getElementById('modal-win');
         this.modalRules = document.getElementById('modal-rules');
         this.modalStats = document.getElementById('modal-stats');
+        this.modalModeSelect = document.getElementById('modal-mode-select');
+
+        // Mode & Difficulty Selection State
+        this.currentMode = '2suits';
+        this.currentDifficulty = 'normal';
 
         // Selection & Drag State
         this.selectedSequenceInfo = null; // { colIndex, cardIndex }
@@ -51,22 +58,50 @@ export class UIController {
             this.updateSoundButtonUI();
         }
 
-        this.startNewGame();
+        // Show mode selection modal on start!
+        this.openModeSelectModal();
     }
 
-    startNewGame() {
+    openModeSelectModal() {
+        this.modalModeSelect.classList.add('open');
+    }
+
+    startNewGame(mode = this.currentMode, difficulty = this.currentDifficulty) {
+        this.currentMode = mode;
+        this.currentDifficulty = difficulty;
+
         this.stopTimer();
         this.secondsElapsed = 0;
         this.timerStarted = false;
         this.updateTimerUI();
 
-        this.engine.initGame();
+        this.engine.initGame(mode, difficulty);
         StorageManager.recordGameStart();
 
         this.clearSelection();
         this.clearHint();
+        this.updateModeBadgeUI();
         this.renderBoard();
-        this.showToast('Bienvenue sur le Solitaire de Mamie Nicole ! Bonne partie ! 💖');
+
+        let modeText = '2 Couleurs (Normal)';
+        if (mode === '1suit') modeText = '1 Couleur (Facile)';
+        else if (difficulty === 'hard') modeText = '2 Couleurs (Difficile)';
+
+        this.showToast(`Nouvelle partie démarrée : ${modeText} ! 💖`);
+    }
+
+    updateModeBadgeUI() {
+        if (!this.modeBadgeEl) return;
+        if (this.currentMode === '1suit') {
+            this.modeBadgeEl.textContent = '1 Couleur';
+            this.modeBadgeEl.style.background = '#27AE60';
+        } else if (this.currentDifficulty === 'normal') {
+            this.modeBadgeEl.textContent = '2 Couleurs (Normal)';
+            this.modeBadgeEl.style.background = '#F39C12';
+        } else {
+            this.modeBadgeEl.textContent = '2 Couleurs (Difficile)';
+            this.modeBadgeEl.style.background = '#E74C3C';
+        }
     }
 
     startTimer() {
@@ -120,14 +155,14 @@ export class UIController {
     }
 
     getDynamicCardOffsets() {
-        let cardHeight = 190;
+        let cardHeight = 130;
         const sampleCard = this.tableauContainer.querySelector('.card');
         if (sampleCard) {
             const rect = sampleCard.getBoundingClientRect();
             if (rect.height > 0) cardHeight = rect.height;
         }
-        const faceUpStep = Math.max(22, Math.round(cardHeight * 0.22));
-        const faceDownStep = Math.max(8, Math.round(cardHeight * 0.08));
+        const faceUpStep = Math.max(16, Math.round(cardHeight * 0.18));
+        const faceDownStep = Math.max(6, Math.round(cardHeight * 0.06));
         return { faceUpStep, faceDownStep };
     }
 
@@ -255,14 +290,30 @@ export class UIController {
             this.renderBoard();
         });
 
+        // Mode cards selection event listeners
+        document.querySelectorAll('.mode-card').forEach(card => {
+            card.addEventListener('click', (e) => {
+                const targetCard = e.currentTarget;
+                const mode = targetCard.dataset.mode;
+                const difficulty = targetCard.dataset.difficulty;
+                this.modalModeSelect.classList.remove('open');
+                this.startNewGame(mode, difficulty);
+            });
+        });
+
         this.btnUndo.addEventListener('click', () => this.handleUndo());
         this.btnRedo.addEventListener('click', () => this.handleRedo());
         this.btnHint.addEventListener('click', () => this.handleHint());
         this.btnNewGame.addEventListener('click', () => {
-            if (confirm('Voulez-vous vraiment démarrer une nouvelle partie ?')) {
-                this.startNewGame();
-            }
+            this.openModeSelectModal();
         });
+
+        if (this.btnWinRestart) {
+            this.btnWinRestart.addEventListener('click', () => {
+                this.modalWin.classList.remove('open');
+                this.openModeSelectModal();
+            });
+        }
 
         this.btnRules.addEventListener('click', () => this.modalRules.classList.add('open'));
         this.btnStats.addEventListener('click', () => this.showStatsModal());
@@ -361,7 +412,6 @@ export class UIController {
     handlePointerMove(e) {
         if (!this.dragState) return;
 
-        // STRICT SAFETY: If primary mouse button is NOT currently pressed, CANCEL DRAG IMMEDIATELY!
         if (e.buttons !== undefined && e.buttons !== 1) {
             this.handlePointerCancel(e);
             return;
@@ -396,7 +446,6 @@ export class UIController {
         const dist = Math.hypot(e.clientX - startX, e.clientY - startY);
 
         if (isDragging || dist > 6) {
-            // Drag & Drop action
             const dropTargetCol = this.findDropTargetColumn(e.clientX, e.clientY);
             this.showSourceCardsInTableau();
             this.cleanupDragGhost();
@@ -406,10 +455,9 @@ export class UIController {
                 this.attemptMove(colIndex, cardIndex, dropTargetCol);
             } else {
                 sound.playError();
-                this.renderBoard(); // Return card to initial position
+                this.renderBoard();
             }
         } else {
-            // Quick Single Click / Tap action
             this.dragState = null;
             this.handleQuickSingleClick(colIndex, cardIndex);
         }
@@ -430,11 +478,6 @@ export class UIController {
         }
     }
 
-    /**
-     * Quick Single Click (Tap) Auto-Move:
-     * Immediately moves the card/sequence to the best valid target column.
-     * If no valid moves exist, does NOTHING (card stays in place cleanly).
-     */
     handleQuickSingleClick(colIndex, cardIndex) {
         const validMoves = this.engine.getValidMoves().filter(m => m.fromCol === colIndex && m.cardIndex === cardIndex);
 
@@ -442,7 +485,6 @@ export class UIController {
             const bestMove = validMoves[0];
             this.attemptMove(colIndex, cardIndex, bestMove.toCol);
         } else {
-            // No valid move possible -> Do nothing cleanly!
             this.renderBoard();
         }
     }
@@ -549,7 +591,7 @@ export class UIController {
         if (this.dragState.ghostEl) {
             const ghostRect = this.dragState.ghostEl.getBoundingClientRect();
             targetX = ghostRect.left + ghostRect.width / 2;
-            targetY = ghostRect.top + Math.min(ghostRect.height / 2, 45);
+            targetY = ghostRect.top + Math.min(ghostRect.height / 2, 35);
         }
 
         const columns = document.querySelectorAll('.column');

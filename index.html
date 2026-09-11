@@ -12,7 +12,7 @@
         <header id="header-bar">
             <div class="brand-title">
                 <span>Solitaire de Mamie Nicole</span>
-                <span class="badge">2 Couleurs</span>
+                <span id="mode-badge" class="badge">2 Couleurs</span>
             </div>
 
             <div class="stats-display">
@@ -84,6 +84,50 @@
     <!-- TOAST NOTIFICATION -->
     <div id="toast-message"></div>
 
+    <!-- MODAL: CHOIX DU MODE & DIFFICULTÉ -->
+    <div id="modal-mode-select" class="modal">
+        <div class="modal-content" style="text-align: center;">
+            <div class="modal-header" style="justify-content: center;">
+                <h2 class="modal-title" style="color: #2C3E50;">🌸 Choisissez votre Mode de Jeu</h2>
+            </div>
+            <p style="font-size: 1.1rem; color: #7F8C8D; margin-bottom: 10px;">
+                Sélectionnez le mode et la difficulté pour démarrer votre partie :
+            </p>
+
+            <div class="mode-options-grid">
+                <!-- Option 1: 1 Couleur -->
+                <div class="mode-card" data-mode="1suit" data-difficulty="normal">
+                    <div class="mode-card-icon">♠️</div>
+                    <div class="mode-card-info" style="text-align: left;">
+                        <div class="mode-card-title">1 Couleur (Piques ♠)</div>
+                        <div class="mode-card-desc">Toutes les cartes sont noires (Piques). Très facile & relaxant !</div>
+                    </div>
+                    <div class="mode-card-badge badge-easy">Facile</div>
+                </div>
+
+                <!-- Option 2: 2 Couleurs Normal (Tirage Favorable) -->
+                <div class="mode-card" data-mode="2suits" data-difficulty="normal">
+                    <div class="mode-card-icon">♠️♥️</div>
+                    <div class="mode-card-info" style="text-align: left;">
+                        <div class="mode-card-title">2 Couleurs — Niveau Normal</div>
+                        <div class="mode-card-desc">Piques ♠ & Cœurs ♥ avec un tirage favorable pour faciliter la réussite !</div>
+                    </div>
+                    <div class="mode-card-badge badge-normal">Normal</div>
+                </div>
+
+                <!-- Option 3: 2 Couleurs Difficile -->
+                <div class="mode-card" data-mode="2suits" data-difficulty="hard">
+                    <div class="mode-card-icon">♠️♥️</div>
+                    <div class="mode-card-info" style="text-align: left;">
+                        <div class="mode-card-title">2 Couleurs — Niveau Difficile</div>
+                        <div class="mode-card-desc">Piques ♠ & Cœurs ♥ avec le mélange classique original.</div>
+                    </div>
+                    <div class="mode-card-badge badge-hard">Difficile</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- MODAL: VICTOIRE -->
     <div id="modal-win" class="modal">
         <div class="modal-content" style="text-align: center;">
@@ -104,7 +148,7 @@
                     <div class="stat-box-desc">Coups joués</div>
                 </div>
             </div>
-            <button id="btn-win-restart" class="btn btn-primary" style="margin-top: 24px; width: 100%; justify-content: center; font-size: 1.25rem; padding: 12px;" onclick="location.reload()">
+            <button id="btn-win-restart" class="btn btn-primary" style="margin-top: 24px; width: 100%; justify-content: center; font-size: 1.25rem; padding: 12px;">
                 Rejouer une partie 🔄
             </button>
         </div>
@@ -118,9 +162,9 @@
                 <button class="modal-close">&times;</button>
             </div>
             <ul class="rules-list">
-                <li><strong>Cartes :</strong> 104 cartes au total (Piques ♠ et Cœurs ♥).</li>
+                <li><strong>Cartes :</strong> 104 cartes au total (Mode 1 Couleur : ♠ Piques ; Mode 2 Couleurs : ♠ Piques et ♥ Cœurs).</li>
                 <li><strong>Empilement :</strong> Vous pouvez poser n'importe quelle carte sur une carte de rang immédiatement supérieur (ex: un 8 sur un 9), quelle que soit sa couleur.</li>
-                <li><strong>Séquences :</strong> Vous ne pouvez déplacer en bloc qu'une séquence de cartes strictly descendante et de la <em>même couleur</em> (ex: R♠–D♠–V♠–10♠).</li>
+                <li><strong>Séquences :</strong> Vous ne pouvez déplacer en bloc qu'une séquence de cartes strictement descendante et de la <em>même couleur</em> (ex: R♠–D♠–V♠–10♠).</li>
                 <li><strong>Colonnes vides :</strong> Une colonne vide peut recevoir n'importe quelle carte ou séquence valide.</li>
                 <li><strong>Pioche :</strong> Cliquez sur la pioche pour distribuer 1 carte sur chaque colonne (10 cartes). <em>Important :</em> Toutes les colonnes doivent contenir au moins 1 carte pour pouvoir piocher !</li>
                 <li><strong>Objectif :</strong> Former 8 suites complètes de la même couleur (du Roi à l'As). Lorsqu'une suite est formée, elle est retirée du plateau.</li>

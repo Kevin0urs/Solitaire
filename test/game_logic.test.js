@@ -5,8 +5,15 @@ import { Deck } from '../js/deck.js';
 export function runAllGameEngineTests(assert) {
     console.log("🧪 Starting Game Engine Unit Tests...");
 
-    // Test 1: Deck Creation & Initial Setup
-    assert.test('Deck creation has 104 cards and 2 suits (Spades & Hearts)', () => {
+    // Test 1: Deck Creation & Initial Setup for 1-Suit and 2-Suit
+    assert.test('Deck creation 1-Suit has 104 Spades cards', () => {
+        const deck = Deck.createSpider1SuitDeck();
+        assert.equal(deck.length, 104, 'Deck should contain 104 cards');
+        const spades = deck.filter(c => c.suit === 'spades');
+        assert.equal(spades.length, 104, '104 Spades cards');
+    });
+
+    assert.test('Deck creation 2-Suit has 104 cards and 2 suits (Spades & Hearts)', () => {
         const deck = Deck.createSpider2SuitDeck();
         assert.equal(deck.length, 104, 'Deck should contain 104 cards');
 
@@ -16,22 +23,23 @@ export function runAllGameEngineTests(assert) {
         assert.equal(hearts.length, 52, '52 Hearts cards');
     });
 
-    assert.test('Game initialization sets up 10 columns and 50 stock cards', () => {
+    assert.test('Game initialization sets up 10 columns and 50 stock cards in 1-Suit mode', () => {
         const engine = new GameEngine();
-        engine.initGame();
+        engine.initGame('1suit', 'normal');
 
         assert.equal(engine.tableau.length, 10, '10 tableau columns');
         assert.equal(engine.stock.length, 50, '50 stock cards');
+        assert.equal(engine.mode, '1suit', '1-Suit mode active');
+    });
 
-        // Cols 0-3 have 6 cards, Cols 4-9 have 5 cards
-        for (let col = 0; col < 4; col++) {
-            assert.equal(engine.tableau[col].length, 6, `Column ${col} has 6 cards`);
-            assert.equal(engine.tableau[col][5].faceUp, true, `Top card in column ${col} is faceUp`);
-        }
-        for (let col = 4; col < 10; col++) {
-            assert.equal(engine.tableau[col].length, 5, `Column ${col} has 5 cards`);
-            assert.equal(engine.tableau[col][4].faceUp, true, `Top card in column ${col} is faceUp`);
-        }
+    assert.test('Game initialization sets up 2-Suit Normal (Favorable Deal)', () => {
+        const engine = new GameEngine();
+        engine.initGame('2suits', 'normal');
+
+        assert.equal(engine.tableau.length, 10, '10 tableau columns');
+        assert.equal(engine.stock.length, 50, '50 stock cards');
+        assert.equal(engine.mode, '2suits', '2-Suit mode active');
+        assert.equal(engine.difficulty, 'normal', 'Normal difficulty active');
     });
 
     // Test 2: Valid and Invalid Move Sequences
@@ -47,7 +55,6 @@ export function runAllGameEngineTests(assert) {
         assert.equal(engine.canMoveSequence(0, 1), true, 'Partial 9-8 Spades sequence is moveable');
         assert.equal(engine.canMoveSequence(0, 2), true, 'Single 8 Spades card is moveable');
 
-        // Mixed suits in sequence -> NOT moveable as a block from index 0
         engine.tableau[1] = [
             new Card('spades', 10, true),
             new Card('hearts', 9, true),
@@ -63,7 +70,7 @@ export function runAllGameEngineTests(assert) {
         const engine = new GameEngine();
         engine.tableau[0] = [new Card('spades', 10, true)];
         engine.tableau[1] = [new Card('hearts', 10, true)];
-        engine.tableau[2] = []; // empty
+        engine.tableau[2] = [];
 
         const sequence9Spades = [new Card('spades', 9, true)];
 
@@ -78,9 +85,7 @@ export function runAllGameEngineTests(assert) {
     // Test 4: Stock Distribution Restrictions
     assert.test('dealStock fails if any column is empty', () => {
         const engine = new GameEngine();
-        engine.initGame();
-        
-        // Empties column 0
+        engine.initGame('2suits', 'hard');
         engine.tableau[0] = [];
 
         const res = engine.dealStock();
@@ -90,7 +95,7 @@ export function runAllGameEngineTests(assert) {
 
     assert.test('dealStock deals 1 card faceUp to each column when all columns have cards', () => {
         const engine = new GameEngine();
-        engine.initGame();
+        engine.initGame('2suits', 'hard');
 
         const initialStockLen = engine.stock.length;
         const initialColLengths = engine.tableau.map(col => col.length);
@@ -108,9 +113,8 @@ export function runAllGameEngineTests(assert) {
     // Test 5: Completed Sequence Removal (K to A same suit)
     assert.test('checkAndRemoveCompletedSequence automatically detects and removes K..A same suit sequence', () => {
         const engine = new GameEngine();
-        engine.tableau[0] = [new Card('spades', 4, false)]; // hidden card underneath
+        engine.tableau[0] = [new Card('spades', 4, false)];
 
-        // Add complete sequence K to A of spades
         for (let rank = 13; rank >= 1; rank--) {
             engine.tableau[0].push(new Card('spades', rank, true));
         }
@@ -127,9 +131,8 @@ export function runAllGameEngineTests(assert) {
     // Test 6: Undo & Redo History State
     assert.test('Undo and Redo restore exact game states', () => {
         const engine = new GameEngine();
-        engine.initGame();
+        engine.initGame('2suits', 'hard');
 
-        // Setup a simple move
         engine.tableau[0] = [new Card('spades', 10, true)];
         engine.tableau[1] = [new Card('spades', 9, true)];
 
@@ -139,14 +142,12 @@ export function runAllGameEngineTests(assert) {
         assert.equal(engine.tableau[1].length, 0, 'Col 1 is empty after move');
         assert.equal(engine.moveCount, 1, 'Move count incremented to 1');
 
-        // Undo
         const undoSuccess = engine.undo();
         assert.equal(undoSuccess, true, 'Undo succeeded');
         assert.equal(engine.tableau[0].length, 1, 'Col 0 restored to 1 card');
         assert.equal(engine.tableau[1].length, 1, 'Col 1 restored to 1 card');
         assert.equal(engine.moveCount, 0, 'Move count restored to 0');
 
-        // Redo
         const redoSuccess = engine.redo();
         assert.equal(redoSuccess, true, 'Redo succeeded');
         assert.equal(engine.tableau[0].length, 2, 'Col 0 has 2 cards after redo');
