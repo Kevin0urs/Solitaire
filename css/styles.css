@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Spider Solitaire - Solitaire de Mamie Nicole (Charte -40% Card Dimensions)
+   Spider Solitaire - Solitaire de Mamie Nicole (Optimisé Ordinateur Ancien)
    ========================================================================== */
 
 :root {
@@ -72,7 +72,7 @@ html, body {
     padding: clamp(4px, 0.6vh, 8px) clamp(10px, 1.2vw, 18px);
     border-radius: 8px;
     margin-bottom: clamp(3px, 0.5vh, 6px);
-    backdrop-filter: blur(6px);
+    backdrop-filter: blur(4px);
     box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
     flex-shrink: 0;
 }
@@ -124,7 +124,7 @@ html, body {
     min-height: 0;
 }
 
-/* Tableau Columns Area */
+/* Tableau Columns Area with Containment Optimization for Older CPUs */
 #tableau-container {
     display: grid;
     grid-template-columns: repeat(10, 1fr);
@@ -133,17 +133,19 @@ html, body {
     position: relative;
     min-height: 0;
     touch-action: none;
+    contain: layout style;
 }
 
 .column {
     position: relative;
     height: 100%;
     border-radius: var(--card-radius);
-    transition: background-color 0.2s ease, box-shadow 0.2s ease;
+    transition: background-color 0.15s ease, box-shadow 0.15s ease;
     touch-action: none;
     display: flex;
     flex-direction: column;
     align-items: center;
+    contain: layout style;
 }
 
 .column.drop-target-hover {
@@ -296,7 +298,7 @@ html, body {
     color: rgba(255, 255, 255, 0.6);
 }
 
-/* --- TAROT CARDS DESIGN --- */
+/* --- TAROT CARDS DESIGN (Hardware Accelerated with GPU Compositing) --- */
 .card {
     position: absolute;
     width: var(--card-width);
@@ -314,6 +316,11 @@ html, body {
     padding: 0;
     overflow: hidden;
     touch-action: none;
+    
+    /* Hardware Compositing Hints */
+    will-change: transform;
+    transform: translateZ(0);
+    backface-visibility: hidden;
 }
 
 .card.face-down {
@@ -333,7 +340,7 @@ html, body {
 /* Selected Card Highlight */
 .card.selected {
     box-shadow: 0 0 0 3px #F39C12, 0 0 16px rgba(243, 156, 18, 0.9), 0 6px 14px rgba(0,0,0,0.45);
-    transform: translateY(-4px);
+    transform: translateY(-4px) translateZ(0);
     z-index: 100 !important;
 }
 
@@ -343,7 +350,7 @@ html, body {
 
 @keyframes hintPulse {
     0% { box-shadow: 0 0 5px var(--hint-glow); }
-    100% { box-shadow: 0 0 20px var(--hint-glow), 0 0 28px #F39C12; transform: translateY(-4px); }
+    100% { box-shadow: 0 0 20px var(--hint-glow), 0 0 28px #F39C12; transform: translateY(-4px) translateZ(0); }
 }
 
 /* Fluid Extra Large Tarot Corner Badges */
@@ -439,12 +446,14 @@ html, body {
 .pips-grid-10 .pip:nth-child(9) { position: absolute; top: 22%; left: 38%; }
 .pips-grid-10 .pip:nth-child(10) { position: absolute; top: 62%; left: 38%; }
 
-/* Drag Ghost Element */
+/* Drag Ghost Element (GPU Composited) */
 .drag-ghost {
     position: fixed;
     pointer-events: none;
     z-index: 9999;
     filter: drop-shadow(0 10px 16px rgba(0,0,0,0.55));
+    will-change: left, top;
+    transform: translateZ(0);
 }
 
 .drag-ghost .card {
@@ -461,7 +470,7 @@ html, body {
     padding: clamp(5px, 0.8vh, 10px);
     background: var(--bar-bg);
     border-radius: 10px;
-    backdrop-filter: blur(6px);
+    backdrop-filter: blur(4px);
     flex-shrink: 0;
 }
 

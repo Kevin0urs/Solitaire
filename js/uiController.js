@@ -52,6 +52,7 @@ export class UIController {
     }
 
     init() {
+        CardRenderer.preloadImages();
         const settings = StorageManager.getSettings();
         if (settings.soundMuted) {
             sound.muted = true;
@@ -80,6 +81,7 @@ export class UIController {
 
         this.clearSelection();
         this.clearHint();
+        this.tableauContainer.innerHTML = '';
         this.updateModeBadgeUI();
         this.renderBoard();
 
@@ -167,23 +169,58 @@ export class UIController {
     }
 
     renderTableau() {
-        this.tableauContainer.innerHTML = '';
         const { faceUpStep, faceDownStep } = this.getDynamicCardOffsets();
 
+        // 1. Ensure 10 column elements exist
+        let colEls = Array.from(this.tableauContainer.children).filter(el => el.classList.contains('column'));
+        if (colEls.length !== 10) {
+            this.tableauContainer.innerHTML = '';
+            colEls = [];
+            for (let colIdx = 0; colIdx < 10; colIdx++) {
+                const colEl = document.createElement('div');
+                colEl.className = 'column';
+                colEl.dataset.colIndex = colIdx;
+                this.tableauContainer.appendChild(colEl);
+                colEls.push(colEl);
+            }
+        }
+
+        // 2. Index all existing card DOM elements across the tableau by cardId
+        const existingCardMap = new Map();
+        const existingCards = this.tableauContainer.querySelectorAll('.card');
+        existingCards.forEach(cardDOM => {
+            if (cardDOM.dataset.cardId) {
+                existingCardMap.set(cardDOM.dataset.cardId, cardDOM);
+            }
+        });
+
+        // Track which card elements are used in this render
+        const usedCardIds = new Set();
+
         for (let colIdx = 0; colIdx < 10; colIdx++) {
-            const colEl = document.createElement('div');
+            const colEl = colEls[colIdx];
             colEl.className = 'column';
-            colEl.dataset.colIndex = colIdx;
+            if (this.activeHint && this.activeHint.toCol === colIdx) {
+                colEl.classList.add('hint-target-column');
+            }
 
             const cards = this.engine.tableau[colIdx];
 
             if (cards.length === 0) {
+                // Clear any card/empty-slot children
+                colEl.innerHTML = '';
                 const emptySlot = document.createElement('div');
                 emptySlot.className = 'empty-column-slot';
                 emptySlot.textContent = 'Vide';
                 colEl.appendChild(emptySlot);
             } else {
+                // Remove empty slot if present
+                const emptySlot = colEl.querySelector('.empty-column-slot');
+                if (emptySlot) emptySlot.remove();
+
                 cards.forEach((card, cardIdx) => {
+                    usedCardIds.add(card.id);
+
                     const isSelected = this.selectedSequenceInfo &&
                         this.selectedSequenceInfo.colIndex === colIdx &&
                         cardIdx >= this.selectedSequenceInfo.cardIndex;
@@ -192,14 +229,22 @@ export class UIController {
                         this.activeHint.fromCol === colIdx &&
                         cardIdx >= this.activeHint.cardIndex;
 
-                    const cardDOM = CardRenderer.createCardDOM(card, {
-                        isSelected,
-                        isHintSource
-                    });
+                    let cardDOM = existingCardMap.get(card.id);
+                    if (cardDOM) {
+                        CardRenderer.updateCardDOM(cardDOM, card, {
+                            isSelected,
+                            isHintSource
+                        });
+                    } else {
+                        cardDOM = CardRenderer.createCardDOM(card, {
+                            isSelected,
+                            isHintSource
+                        });
+                        existingCardMap.set(card.id, cardDOM);
+                    }
 
                     cardDOM.dataset.colIndex = colIdx;
                     cardDOM.dataset.cardIndex = cardIdx;
-
                     cardDOM.style.zIndex = (cardIdx + 1).toString();
 
                     let topOffset = 0;
@@ -208,16 +253,30 @@ export class UIController {
                     }
                     cardDOM.style.top = `${topOffset}px`;
 
-                    colEl.appendChild(cardDOM);
+                    // Maintain proper order in DOM
+                    if (colEl.children[cardIdx] !== cardDOM) {
+                        if (cardIdx < colEl.children.length) {
+                            colEl.insertBefore(cardDOM, colEl.children[cardIdx]);
+                        } else {
+                            colEl.appendChild(cardDOM);
+                        }
+                    }
                 });
-            }
 
-            if (this.activeHint && this.activeHint.toCol === colIdx) {
-                colEl.classList.add('hint-target-column');
+                // Remove any excess elements in colEl that are not part of current cards
+                while (colEl.children.length > cards.length) {
+                    const lastChild = colEl.children[colEl.children.length - 1];
+                    lastChild.remove();
+                }
             }
-
-            this.tableauContainer.appendChild(colEl);
         }
+
+        // Clean up any cards from map that are no longer present anywhere in tableau
+        existingCardMap.forEach((cardDOM, cardId) => {
+            if (!usedCardIds.has(cardId) && cardDOM.parentElement) {
+                cardDOM.remove();
+            }
+        });
     }
 
     renderStock() {

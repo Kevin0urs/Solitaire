@@ -1,5 +1,5 @@
 /**
- * Card Renderer featuring Grimaud 1898 Tarot Historical Face Artwork (Exact Hearts & Spades Suits)
+ * Card Renderer featuring Grimaud 1898 Tarot Historical Face Artwork & Image Preloading Cache
  */
 
 const GRIMAUD_IMAGES = {
@@ -15,7 +15,25 @@ const GRIMAUD_IMAGES = {
     }
 };
 
+const preloadedCache = new Map();
+
 export class CardRenderer {
+    /**
+     * Preloads all 6 figure images into browser memory on startup
+     */
+    static preloadImages() {
+        ['hearts', 'spades'].forEach(suit => {
+            [11, 12, 13].forEach(rank => {
+                const url = GRIMAUD_IMAGES[suit][rank];
+                if (url && !preloadedCache.has(url)) {
+                    const img = new Image();
+                    img.src = url;
+                    preloadedCache.set(url, img);
+                }
+            });
+        });
+    }
+
     /**
      * Creates DOM Node for a card
      */
@@ -24,48 +42,59 @@ export class CardRenderer {
         el.className = `card ${card.faceUp ? 'face-up' : 'face-down'} ${card.suit}`;
         el.dataset.cardId = card.id;
 
+        this.updateCardDOM(el, card, options);
+        return el;
+    }
+
+    /**
+     * Updates an existing Card DOM element in-place to avoid expensive DOM re-creations
+     */
+    static updateCardDOM(el, card, options = {}) {
+        el.className = `card ${card.faceUp ? 'face-up' : 'face-down'} ${card.suit}`;
+        
         if (options.isSelected) el.classList.add('selected');
         if (options.isHintSource) el.classList.add('hint-source');
         if (options.isHintTarget) el.classList.add('hint-target');
         if (options.isDragging) el.classList.add('dragging');
 
         if (!card.faceUp) {
-            el.innerHTML = `<div class="card-back-pattern"></div>`;
-            return el;
+            if (!el.querySelector('.card-back-pattern') || el.querySelector('.card-badge')) {
+                el.innerHTML = `<div class="card-back-pattern"></div>`;
+            }
+            return;
         }
 
         const symbol = card.getSuitSymbol();
         const rankLabel = card.getRankLabel();
         const color = card.getSuitColor();
 
-        let bodyContent = '';
+        // Only rebuild innerHTML if orientation changed from faceDown to faceUp
+        if (!el.querySelector('.card-badge')) {
+            let bodyContent = '';
 
-        if (card.rank >= 11) {
-            // Face cards (Valet, Dame, Roi) - Grimaud 1898 image takes the full card face
-            const imgUrl = GRIMAUD_IMAGES[card.suit][card.rank];
-            bodyContent = `
-                <div class="full-face-image-container">
-                    <img src="${imgUrl}" alt="${rankLabel} ${symbol}" class="grimaud-img-full" loading="lazy" />
+            if (card.rank >= 11) {
+                const imgUrl = GRIMAUD_IMAGES[card.suit][card.rank];
+                bodyContent = `
+                    <div class="full-face-image-container">
+                        <img src="${imgUrl}" alt="${rankLabel} ${symbol}" class="grimaud-img-full" loading="eager" />
+                    </div>
+                `;
+            } else {
+                bodyContent = CardRenderer.getPipsLayoutHTML(card.rank, symbol, color);
+            }
+
+            el.innerHTML = `
+                ${bodyContent}
+                <div class="card-badge top-left" style="color: ${color}">
+                    <span class="badge-rank">${rankLabel}</span>
+                    <span class="badge-suit">${symbol}</span>
+                </div>
+                <div class="card-badge bottom-right" style="color: ${color}">
+                    <span class="badge-rank">${rankLabel}</span>
+                    <span class="badge-suit">${symbol}</span>
                 </div>
             `;
-        } else {
-            // Number cards (1..10)
-            bodyContent = CardRenderer.getPipsLayoutHTML(card.rank, symbol, color);
         }
-
-        el.innerHTML = `
-            ${bodyContent}
-            <div class="card-badge top-left" style="color: ${color}">
-                <span class="badge-rank">${rankLabel}</span>
-                <span class="badge-suit">${symbol}</span>
-            </div>
-            <div class="card-badge bottom-right" style="color: ${color}">
-                <span class="badge-rank">${rankLabel}</span>
-                <span class="badge-suit">${symbol}</span>
-            </div>
-        `;
-
-        return el;
     }
 
     /**
