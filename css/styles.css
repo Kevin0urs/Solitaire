@@ -15,8 +15,8 @@
     --hint-glow: rgba(241, 196, 15, 0.9);
     --target-glow: rgba(46, 204, 113, 0.9);
     
-    /* Reduced Card Dimensions (-40% compact size) */
-    --card-width: clamp(44px, 6.2vw, 76px);
+    /* Reduced Card Dimensions (11-Column Layout: Stock + 10 Tableau Columns) */
+    --card-width: clamp(38px, 5.4vw, 72px);
     --card-height: calc(var(--card-width) * 1.72);
     --card-radius: clamp(3px, 0.5vw, 6px);
     --font-family: 'Segoe UI', Roboto, Inter, -apple-system, sans-serif;
@@ -125,15 +125,20 @@ html, body {
 }
 
 /* Tableau Columns Area with Containment Optimization for Older CPUs */
+/* Tableau Columns Area with 11-Column Grid (Col 1: Stock, Cols 2..11: 10 Tableau Columns) */
 #tableau-container {
     display: grid;
-    grid-template-columns: repeat(10, 1fr);
+    grid-template-columns: repeat(11, 1fr);
     gap: clamp(2px, 0.3vw, 4px);
     flex: 1;
     position: relative;
     min-height: 0;
     touch-action: none;
     contain: layout style;
+}
+
+.column[data-col-index="0"] {
+    grid-column-start: 2;
 }
 
 .column {
@@ -186,18 +191,20 @@ html, body {
     margin: 0 auto;
 }
 
-/* --- BOTTOM DECK & FOUNDATION BAR --- */
+/* --- BOTTOM DECK & FOUNDATION BAR (Aligned with 11-Column Grid) --- */
 #bottom-bar {
-    display: flex;
-    justify-content: space-between;
+    display: grid;
+    grid-template-columns: repeat(11, 1fr);
+    gap: clamp(2px, 0.3vw, 4px);
     align-items: flex-end;
-    padding: clamp(3px, 0.5vh, 6px) clamp(6px, 0.8vw, 12px);
+    padding: clamp(3px, 0.5vh, 6px) clamp(2px, 0.3vw, 4px);
     margin-top: auto;
     flex-shrink: 0;
 }
 
-/* Stock Pile Area */
+/* Stock Pile Area in Column 1 (Far Left, 0 cards above vertically) */
 .stock-area {
+    grid-column: 1;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -249,11 +256,12 @@ html, body {
     font-size: clamp(0.75rem, 0.9vw, 1rem);
 }
 
-/* Foundation Area */
+/* Foundation Area Spanning Columns 2..11 */
 .foundation-area {
+    grid-column: 2 / -1;
     display: flex;
     flex-direction: column;
-    align-items: center;
+    align-items: flex-end;
 }
 
 .foundation-title {
