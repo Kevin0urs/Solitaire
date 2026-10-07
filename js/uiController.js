@@ -81,7 +81,8 @@ export class UIController {
 
         this.clearSelection();
         this.clearHint();
-        this.tableauContainer.innerHTML = '';
+        const gameCols = this.tableauContainer.querySelectorAll('.column');
+        gameCols.forEach(col => col.remove());
         this.updateModeBadgeUI();
         this.renderBoard();
 
@@ -171,10 +172,31 @@ export class UIController {
     renderTableau() {
         const { faceUpStep, faceDownStep } = this.getDynamicCardOffsets();
 
-        // 1. Ensure 10 column elements exist
-        let colEls = Array.from(this.tableauContainer.children).filter(el => el.classList.contains('column'));
+        // 1. Ensure stock-column exists as column 1 in tableauContainer
+        let stockColEl = this.tableauContainer.querySelector('.column-stock');
+        if (!stockColEl) {
+            stockColEl = document.createElement('div');
+            stockColEl.id = 'stock-column';
+            stockColEl.className = 'column-stock';
+            stockColEl.innerHTML = `
+                <div class="stock-area" title="Cliquer pour distribuer 10 cartes (1 par colonne)">
+                    <div class="stock-title">Pioche (<span id="stock-count">50</span>)</div>
+                    <div id="stock-pile"></div>
+                </div>
+            `;
+            this.tableauContainer.insertBefore(stockColEl, this.tableauContainer.firstChild);
+
+            this.stockPileEl = document.getElementById('stock-pile');
+            this.stockCountEl = document.getElementById('stock-count');
+            if (this.stockPileEl) {
+                this.stockPileEl.addEventListener('click', () => this.handleStockClick());
+            }
+        }
+
+        // 2. Ensure 10 column elements exist for the game columns
+        let colEls = Array.from(this.tableauContainer.querySelectorAll('.column'));
         if (colEls.length !== 10) {
-            this.tableauContainer.innerHTML = '';
+            colEls.forEach(el => el.remove());
             colEls = [];
             for (let colIdx = 0; colIdx < 10; colIdx++) {
                 const colEl = document.createElement('div');

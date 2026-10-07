@@ -124,8 +124,7 @@ html, body {
     min-height: 0;
 }
 
-/* Tableau Columns Area with Containment Optimization for Older CPUs */
-/* Tableau Columns Area with 11-Column Grid (Col 1: Stock, Cols 2..11: 10 Tableau Columns) */
+/* Tableau Columns Area with 11-Column Grid (Col 1: Stock Column, Cols 2..11: 10 Tableau Game Columns) */
 #tableau-container {
     display: grid;
     grid-template-columns: repeat(11, 1fr);
@@ -137,8 +136,16 @@ html, body {
     contain: layout style;
 }
 
-.column[data-col-index="0"] {
-    grid-column-start: 2;
+/* Dedicated Stock Column (Column 1 on Far Left) */
+.column-stock {
+    grid-column: 1;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    align-items: center;
+    border-radius: var(--card-radius);
+    padding-bottom: 2px;
 }
 
 .column {
@@ -191,20 +198,17 @@ html, body {
     margin: 0 auto;
 }
 
-/* --- BOTTOM DECK & FOUNDATION BAR (Aligned with 11-Column Grid) --- */
+/* --- BOTTOM DECK & FOUNDATION BAR --- */
 #bottom-bar {
-    display: grid;
-    grid-template-columns: repeat(11, 1fr);
-    gap: clamp(2px, 0.3vw, 4px);
-    align-items: flex-end;
-    padding: clamp(3px, 0.5vh, 6px) clamp(2px, 0.3vw, 4px);
+    display: flex;
+    justify-content: flex-end;
+    padding: clamp(3px, 0.5vh, 6px) clamp(6px, 0.8vw, 12px);
     margin-top: auto;
     flex-shrink: 0;
 }
 
-/* Stock Pile Area in Column 1 (Far Left, 0 cards above vertically) */
+/* Stock Pile Area in Column 1 */
 .stock-area {
-    grid-column: 1;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -256,9 +260,8 @@ html, body {
     font-size: clamp(0.75rem, 0.9vw, 1rem);
 }
 
-/* Foundation Area Spanning Columns 2..11 */
+/* Foundation Area */
 .foundation-area {
-    grid-column: 2 / -1;
     display: flex;
     flex-direction: column;
     align-items: flex-end;

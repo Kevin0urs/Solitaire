@@ -36,17 +36,19 @@
 
         <!-- MAIN PLAYFIELD -->
         <main id="playfield">
-            <!-- 10 Tableau Columns -->
-            <div id="tableau-container"></div>
-
-            <!-- Bottom Deck & Foundation Area -->
-            <div id="bottom-bar">
-                <!-- Stock Pile -->
-                <div class="stock-area" title="Cliquer pour distribuer 10 cartes (1 par colonne)">
-                    <div class="stock-title">Pioche (<span id="stock-count">50</span>)</div>
-                    <div id="stock-pile"></div>
+            <!-- 11-Column Grid: Column 1 is Stock, Columns 2..11 are Tableau 0..9 -->
+            <div id="tableau-container">
+                <!-- Column 1: Stock Column (Pioche) -->
+                <div id="stock-column" class="column-stock">
+                    <div class="stock-area" title="Cliquer pour distribuer 10 cartes (1 par colonne)">
+                        <div class="stock-title">Pioche (<span id="stock-count">50</span>)</div>
+                        <div id="stock-pile"></div>
+                    </div>
                 </div>
+            </div>
 
+            <!-- Bottom Foundation Area -->
+            <div id="bottom-bar">
                 <!-- Foundation Piles (8 Completed Runs) -->
                 <div class="foundation-area">
                     <div class="foundation-title">Suites Complétées (8 Max)</div>
