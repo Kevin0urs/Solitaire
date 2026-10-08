@@ -15,9 +15,9 @@
     --hint-glow: rgba(241, 196, 15, 0.9);
     --target-glow: rgba(46, 204, 113, 0.9);
     
-    /* Fluid Screen-Optimized Card Dimensions (11-Column Layout) */
-    --card-width: clamp(44px, calc((100vw - 20px) / 11.2), 98px);
-    --card-height: calc(var(--card-width) * 1.62);
+    /* Reduced Card Dimensions (11-Column Layout: Stock + 10 Tableau Columns) */
+    --card-width: clamp(38px, 5.4vw, 72px);
+    --card-height: calc(var(--card-width) * 1.72);
     --card-radius: clamp(3px, 0.5vw, 6px);
     --font-family: 'Segoe UI', Roboto, Inter, -apple-system, sans-serif;
     --font-size-base: clamp(13px, 1.1vw, 16px);
@@ -60,7 +60,7 @@ html, body {
     height: 100vh;
     max-width: 100%;
     margin: 0 auto;
-    padding: clamp(2px, 0.4vw, 5px);
+    padding: clamp(3px, 0.6vw, 8px);
 }
 
 /* --- HEADER BAR --- */
@@ -69,9 +69,9 @@ html, body {
     justify-content: space-between;
     align-items: center;
     background: var(--bar-bg);
-    padding: clamp(3px, 0.5vh, 6px) clamp(8px, 1vw, 14px);
+    padding: clamp(4px, 0.6vh, 8px) clamp(10px, 1.2vw, 18px);
     border-radius: 8px;
-    margin-bottom: clamp(2px, 0.3vh, 4px);
+    margin-bottom: clamp(3px, 0.5vh, 6px);
     backdrop-filter: blur(4px);
     box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
     flex-shrink: 0;
@@ -128,7 +128,7 @@ html, body {
 #tableau-container {
     display: grid;
     grid-template-columns: repeat(11, 1fr);
-    gap: clamp(1px, 0.15vw, 3px);
+    gap: clamp(2px, 0.3vw, 4px);
     flex: 1;
     position: relative;
     min-height: 0;
